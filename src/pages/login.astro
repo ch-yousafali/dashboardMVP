@@ -1,0 +1,99 @@
+---
+import AuthLayout from '@/layouts/AuthLayout.astro';
+
+const url = Astro.url;
+const error = url.searchParams.get('error');
+const verified = url.searchParams.get('verified');
+const reset = url.searchParams.get('reset');
+
+// Redirect to dashboard if already logged in
+if (Astro.locals.user) {
+  return Astro.redirect('/');
+}
+---
+
+<AuthLayout title="Sign In — Business HQ">
+  <h1 class="auth-title">Welcome back</h1>
+  <p class="auth-subtitle">Sign in to your Business HQ dashboard</p>
+
+  {verified && <div class="auth-success">Your email has been verified. You can now sign in.</div>}
+  {reset && <div class="auth-success">Your password has been reset. You can now sign in.</div>}
+  {error === 'invalid_token' && <div class="auth-error">The link is invalid or has expired.</div>}
+
+  <div id="loginError"></div>
+
+  <form class="auth-form" id="loginForm">
+    <label class="auth-field">
+      <span>Email</span>
+      <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" />
+    </label>
+    <label class="auth-field">
+      <span>Password</span>
+      <div class="auth-pw-wrap">
+        <input type="password" name="password" required placeholder="••••••••" autocomplete="current-password" id="loginPw" />
+        <button type="button" class="auth-pw-toggle" data-target="loginPw" aria-label="Show password">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </label>
+    <button type="submit" class="btn btn-primary auth-btn" id="loginSubmit">Sign in</button>
+  </form>
+
+  <div class="auth-footer">
+    <a href="/forgot-password">Forgot your password?</a>
+  </div>
+  <div class="auth-footer">
+    Don't have an account? <a href="/signup">Sign up</a>
+  </div>
+</AuthLayout>
+
+<script>
+  const form = document.getElementById('loginForm') as HTMLFormElement;
+  const errorEl = document.getElementById('loginError');
+  const submitBtn = document.getElementById('loginSubmit') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl!.innerHTML = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in…';
+
+    try {
+      const fd = new FormData(form);
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        body: fd,
+        redirect: 'manual',
+      });
+
+      if (res.type === 'opaqueredirect' || res.status === 0 || (res.status >= 200 && res.status < 400)) {
+        window.location.href = '/';
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (errorEl) {
+        errorEl.innerHTML = `<div class="auth-error">${data.error || 'Sign in failed. Please try again.'}</div>`;
+      }
+    } catch {
+      if (errorEl) {
+        errorEl.innerHTML = '<div class="auth-error">Network error. Please try again.</div>';
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign in';
+    }
+  });
+
+  // Password show/hide toggle
+  document.querySelectorAll('.auth-pw-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = (btn as HTMLElement).dataset.target;
+      const input = targetId ? document.getElementById(targetId) as HTMLInputElement : null;
+      if (!input) return;
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      btn.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+    });
+  });
+</script>

@@ -1,0 +1,91 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass, todayISO } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const preOrders = await db.select().from(schema.preOrders).where(eq(schema.preOrders.workspaceId, wsId));
+const updates = await db.select().from(schema.customerUpdates).where(eq(schema.customerUpdates.workspaceId, wsId)).orderBy(schema.customerUpdates.createdAt);
+---
+
+<DashboardLayout title="Customer Updates — Business HQ" activeSection="customer-updates" pageTitle="Customer Updates">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head"><h2>Send a customer update</h2></div>
+      <form class="form-grid" id="customerUpdateForm">
+        <label class="field">
+          <span>Related product / pre-order</span>
+          <div class="hq-select">
+            <select class="hq-select-native" id="cuProduct">
+              {preOrders.map(p => <option value={p.product}>{p.product}</option>)}
+            </select>
+          </div>
+        </label>
+        <label class="field">
+          <span>Email subject</span>
+          <input type="text" id="cuSubject" placeholder="e.g. Your striped long sleeve is on its way" />
+        </label>
+        <label class="field field-wide">
+          <span>Email content</span>
+          <textarea id="cuContent" rows="6" placeholder="Write the update your customers will receive…"></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cuSendTest">Send Test</button>
+          <button type="button" class="btn btn-secondary" id="cuSchedule">Schedule</button>
+          <button type="button" class="btn btn-primary" id="cuSendNow">Send Now</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Sent & scheduled updates</h2></div>
+      <div class="card-list">
+        {updates.length === 0 ? (
+          <div class="empty-state">No updates sent yet.</div>
+        ) : updates.reverse().map(u => (
+          <div class="item-card">
+            <div class="item-card-main">
+              <div class="item-card-title">{u.subject}</div>
+              <div class="item-card-desc">{u.content}</div>
+              <div class="item-card-meta">
+                <span class={`badge ${statusBadgeClass(u.state)}`}>{u.state}</span>
+                <span>{u.product}</span>
+                <span>{fmtDate(u.date)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script is:inline define:vars={{ wsId: Astro.locals.workspace!.id }}>
+  async function submitCustomerUpdate(stateLabel) {
+    const product = document.getElementById('cuProduct').value;
+    const subject = document.getElementById('cuSubject').value.trim();
+    const content = document.getElementById('cuContent').value.trim();
+    if (!subject || !content) { if (window.hqToast) window.hqToast('Add a subject and message first'); return; }
+
+    const res = await fetch('/api/customer-updates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product, subject, content, state: stateLabel, workspaceId: wsId }),
+    });
+    if (res.ok) {
+      document.getElementById('customerUpdateForm').reset();
+      if (window.hqToast) window.hqToast(stateLabel === 'Sent' ? 'Update sent to customers' : 'Update scheduled');
+      window.location.reload();
+    }
+  }
+
+  document.getElementById('cuSendNow').addEventListener('click', () => submitCustomerUpdate('Sent'));
+  document.getElementById('cuSchedule').addEventListener('click', () => submitCustomerUpdate('Scheduled'));
+  document.getElementById('cuSendTest').addEventListener('click', () => {
+    if (window.hqToast) window.hqToast('Test email sent to your inbox');
+  });
+</script>

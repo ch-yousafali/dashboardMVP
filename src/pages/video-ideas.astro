@@ -1,0 +1,56 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass, escapeHtml } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const ideas = await db.select().from(schema.videoIdeas).where(eq(schema.videoIdeas.workspaceId, wsId)).orderBy(schema.videoIdeas.createdAt);
+---
+
+<DashboardLayout title="Video Ideas — Business HQ" activeSection="video-ideas" pageTitle="Video Ideas">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Video ideas</h2>
+        <button class="btn btn-primary" data-modal="videoidea">+ Add New Idea</button>
+      </div>
+      <div class="card-list" id="videoIdeasList">
+        {ideas.length === 0 ? (
+          <div class="empty-state">No video ideas yet.</div>
+        ) : ideas.map(v => (
+          <div class="item-card">
+            <div class="item-card-main">
+              <div class="item-card-title">{v.title}</div>
+              <div class="item-card-desc">{v.description}</div>
+              <div class="item-card-meta">
+                <span class={`badge ${statusBadgeClass(v.status)}`}>{v.status}</span>
+                <span>Priority: {v.priority}</span>
+                <span>Added {fmtDate(v.createdAt.toISOString().slice(0, 10))}</span>
+              </div>
+            </div>
+            <div class="item-card-actions">
+              <button class="btn btn-secondary btn-sm" onclick={`window.hqOpenModal('videoidea','${v.id}')`}>Edit</button>
+              <button class="btn btn-danger btn-sm" onclick={`window.hqDeleteItem('video-ideas','${v.id}')`}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script>
+  // Delete handler
+  window.hqDeleteItem = async (endpoint, id) => {
+    if (!confirm('Delete this item?')) return;
+    const res = await fetch(`/api/${endpoint}/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      if (window.hqToast) window.hqToast('Item deleted');
+      window.location.reload();
+    }
+  };
+</script>

@@ -1,0 +1,257 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const notes = await db.select().from(schema.notes).where(eq(schema.notes.workspaceId, wsId));
+const sortedNotes = [...notes].sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || b.date.localeCompare(a.date));
+const pinnedNotes = sortedNotes.filter(n => n.pinned);
+const unpinnedNotes = sortedNotes.filter(n => !n.pinned);
+---
+
+<DashboardLayout title="Notes — Business HQ" activeSection="notes" pageTitle="Notes">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Notes</h2>
+        <div class="panel-head-actions">
+          <div class="search-box search-box-small">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke-width="1.6" /><path d="m20 20-3.5-3.5" stroke-width="1.6" /></svg>
+            <input type="text" id="notesSearch" placeholder="Search notes…" />
+          </div>
+          <button class="btn btn-primary" data-modal="note">+ Add Note</button>
+        </div>
+      </div>
+      {sortedNotes.length === 0 ? (
+        <div class="empty-state">No notes yet.</div>
+      ) : (
+        <>
+          {pinnedNotes.length > 0 && (
+            <div class="notes-section" id="pinnedSection">
+              <div class="notes-section-label">
+                <svg class="notes-section-pin-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                <span>PINNED</span>
+              </div>
+              <div class="notes-grid" id="pinnedGrid">
+                {pinnedNotes.map(n => (
+                  <div class={`note-card color-${n.color || 'default'} pinned`} data-id={n.id} data-text={n.text} data-pinned={n.pinned} data-color={n.color || 'default'}>
+                    <div class="note-pin-badge" title="Pinned">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                    </div>
+                    <div class="note-card-text">{n.text}</div>
+                    <div class="note-card-footer">
+                      <span class="note-card-date">{fmtDate(n.date)}</span>
+                      <div class="note-card-actions">
+                        <button class="note-icon-btn" title="Unpin" data-action="pin" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                        <button class="note-icon-btn" title="Edit" data-action="edit" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5Z" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                        <button class="note-icon-btn" title="Delete" data-action="delete" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {unpinnedNotes.length > 0 && (
+            <div class="notes-section" id="unpinnedSection">
+              {pinnedNotes.length > 0 && (
+                <div class="notes-section-label">
+                  <span>OTHER</span>
+                </div>
+              )}
+              <div class="notes-grid" id="unpinnedGrid">
+                {unpinnedNotes.map(n => (
+                  <div class={`note-card color-${n.color || 'default'}`} data-id={n.id} data-text={n.text} data-pinned={n.pinned} data-color={n.color || 'default'}>
+                    <div class="note-card-text">{n.text}</div>
+                    <div class="note-card-footer">
+                      <span class="note-card-date">{fmtDate(n.date)}</span>
+                      <div class="note-card-actions">
+                        <button class="note-icon-btn" title="Pin" data-action="pin" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                        <button class="note-icon-btn" title="Edit" data-action="edit" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5Z" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                        <button class="note-icon-btn" title="Delete" data-action="delete" data-id={n.id}>
+                          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+</DashboardLayout>
+
+<script>
+  // Note search — searches across both pinned and unpinned grids
+  const search = document.getElementById('notesSearch');
+  search?.addEventListener('input', (e) => {
+    const filter = e.target.value.toLowerCase();
+    document.querySelectorAll('.notes-grid .note-card').forEach(card => {
+      const text = card.dataset.text?.toLowerCase() || '';
+      card.style.display = text.includes(filter) ? '' : 'none';
+    });
+  });
+
+  // Helper: move a card to a target grid, maintaining sort order (pinned first, then by date desc)
+  function moveCardToGrid(card, targetGrid) {
+    // Insert in sorted position: pinned section is sorted by date desc, same for unpinned
+    const cards = Array.from(targetGrid.querySelectorAll('.note-card'));
+    const cardDate = card.querySelector('.note-card-date')?.textContent || '';
+    let inserted = false;
+    for (const c of cards) {
+      const cDate = c.querySelector('.note-card-date')?.textContent || '';
+      if (cardDate >= cDate) {
+        targetGrid.insertBefore(card, c);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) targetGrid.appendChild(card);
+  }
+
+  // Note actions
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.note-icon-btn[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+
+    if (action === 'pin') {
+      const card = btn.closest('.note-card');
+      const wasPinned = card.dataset.pinned === 'true';
+      // Optimistic UI update
+      try {
+        await fetch(`/api/notes/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pinned: !wasPinned }),
+        });
+      } catch (err) {
+        if (window.hqToast) window.hqToast('Failed to update note');
+        return;
+      }
+
+      if (wasPinned) {
+        // Unpin: move to unpinned grid
+        card.dataset.pinned = 'false';
+        card.classList.remove('pinned');
+        const badge = card.querySelector('.note-pin-badge');
+        if (badge) badge.remove();
+        btn.setAttribute('title', 'Pin');
+        const unpinnedGrid = document.getElementById('unpinnedGrid');
+        const unpinnedSection = document.getElementById('unpinnedSection');
+        if (unpinnedGrid) {
+          moveCardToGrid(card, unpinnedGrid);
+        } else if (unpinnedSection) {
+          // Create grid if missing
+          const grid = document.createElement('div');
+          grid.className = 'notes-grid';
+          grid.id = 'unpinnedGrid';
+          grid.appendChild(card);
+          unpinnedSection.appendChild(grid);
+        }
+        // Hide pinned section if empty
+        const pinnedGrid = document.getElementById('pinnedGrid');
+        if (pinnedGrid && pinnedGrid.children.length === 0) {
+          const pinnedSection = document.getElementById('pinnedSection');
+          if (pinnedSection) pinnedSection.style.display = 'none';
+        }
+        if (window.hqToast) window.hqToast('Note unpinned');
+      } else {
+        // Pin: move to pinned grid
+        card.dataset.pinned = 'true';
+        card.classList.add('pinned');
+        // Add pin badge if not present
+        if (!card.querySelector('.note-pin-badge')) {
+          const badge = document.createElement('div');
+          badge.className = 'note-pin-badge';
+          badge.title = 'Pinned';
+          badge.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+          card.insertBefore(badge, card.firstChild);
+        }
+        btn.setAttribute('title', 'Unpin');
+        let pinnedGrid = document.getElementById('pinnedGrid');
+        let pinnedSection = document.getElementById('pinnedSection');
+        if (!pinnedSection) {
+          // Create pinned section
+          pinnedSection = document.createElement('div');
+          pinnedSection.className = 'notes-section';
+          pinnedSection.id = 'pinnedSection';
+          const label = document.createElement('div');
+          label.className = 'notes-section-label';
+          label.innerHTML = '<svg class="notes-section-pin-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>PINNED</span>';
+          pinnedSection.appendChild(label);
+          // Insert before unpinned section
+          const unpinnedSection = document.getElementById('unpinnedSection');
+          const panel = unpinnedSection?.parentElement;
+          if (panel) panel.insertBefore(pinnedSection, unpinnedSection);
+        }
+        if (!pinnedGrid) {
+          pinnedGrid = document.createElement('div');
+          pinnedGrid.className = 'notes-grid';
+          pinnedGrid.id = 'pinnedGrid';
+          pinnedSection.appendChild(pinnedGrid);
+        }
+        pinnedSection.style.display = '';
+        moveCardToGrid(card, pinnedGrid);
+        if (window.hqToast) window.hqToast('Note pinned');
+      }
+    } else if (action === 'edit') {
+      const card = btn.closest('.note-card');
+      const text = card.dataset.text || '';
+      const color = card.dataset.color || 'default';
+      if (window.hqOpenModal) window.hqOpenModal('note', id, { text, color });
+    } else if (action === 'delete') {
+      if (!confirm('Delete this note?')) return;
+      try {
+        await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        if (window.hqToast) window.hqToast('Failed to delete note');
+        return;
+      }
+      const card = btn.closest('.note-card');
+      card.remove();
+      // Hide sections if empty
+      const pinnedGrid = document.getElementById('pinnedGrid');
+      if (pinnedGrid && pinnedGrid.children.length === 0) {
+        const pinnedSection = document.getElementById('pinnedSection');
+        if (pinnedSection) pinnedSection.style.display = 'none';
+      }
+      const unpinnedGrid = document.getElementById('unpinnedGrid');
+      if (unpinnedGrid && unpinnedGrid.children.length === 0) {
+        const unpinnedSection = document.getElementById('unpinnedSection');
+        if (unpinnedSection) unpinnedSection.style.display = 'none';
+      }
+      // Show empty state if no notes left
+      const totalNotes = document.querySelectorAll('.notes-grid .note-card').length;
+      if (totalNotes === 0) {
+        const panel = document.querySelector('.panel');
+        if (panel) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'No notes yet.';
+          panel.appendChild(empty);
+        }
+      }
+      if (window.hqToast) window.hqToast('Note deleted');
+    }
+  });
+</script>

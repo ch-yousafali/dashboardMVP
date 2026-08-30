@@ -1,0 +1,61 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const tracking = await db.select().from(schema.tracking).where(eq(schema.tracking.workspaceId, wsId));
+
+const TRACKING_STEPS = ['Pending', 'In Transit', 'Out for Delivery', 'Delivered'];
+---
+
+<DashboardLayout title="Tracking — Business HQ" activeSection="tracking" pageTitle="Tracking">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Shipment tracking</h2>
+        <button class="btn btn-primary" data-modal="tracking">+ Add Tracking Number</button>
+      </div>
+      <div class="card-list">
+        {tracking.length === 0 ? (
+          <div class="empty-state">No tracked shipments yet.</div>
+        ) : tracking.map(t => {
+          const isDelayed = t.status === 'Delayed';
+          const currentIdx = isDelayed ? 1 : TRACKING_STEPS.indexOf(t.status);
+          return (
+            <div class="item-card" style="flex-direction:column; align-items:stretch;">
+              <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start;">
+                <div class="item-card-main">
+                  <div class="item-card-title">{t.product}</div>
+                  <div class="item-card-desc">{t.carrier} · {t.number}</div>
+                  <div class="item-card-meta">
+                    <span class={`badge ${statusBadgeClass(t.status)}`}>{t.status}</span>
+                    <span>Estimated arrival {fmtDate(t.eta || '')}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="tracking-timeline">
+                {TRACKING_STEPS.map((step, i) => {
+                  let cls = '';
+                  if (i < currentIdx) cls = 'done';
+                  else if (i === currentIdx) cls = 'current';
+                  return (
+                    <div class={`tt-step ${cls}`}>
+                      <div class="tt-line"></div>
+                      <div class="tt-dot"></div>
+                      <div class="tt-label">{step}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

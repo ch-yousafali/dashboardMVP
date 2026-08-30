@@ -1,0 +1,114 @@
+---
+import AuthLayout from '@/layouts/AuthLayout.astro';
+
+if (Astro.locals.user) {
+  return Astro.redirect('/');
+}
+---
+
+<AuthLayout title="Sign Up — Business HQ">
+  <h1 class="auth-title">Create your account</h1>
+  <p class="auth-subtitle">Start managing your business in one place</p>
+
+  <div id="signupError"></div>
+
+  <form class="auth-form" id="signupForm">
+    <label class="auth-field">
+      <span>Full name</span>
+      <input type="text" name="name" required placeholder="Maya Alden" autocomplete="name" />
+    </label>
+    <label class="auth-field">
+      <span>Email</span>
+      <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" />
+    </label>
+    <label class="auth-field">
+      <span>Password</span>
+      <div class="auth-pw-wrap">
+        <input type="password" name="password" required placeholder="At least 8 characters" autocomplete="new-password" minlength="8" id="signupPw" />
+        <button type="button" class="auth-pw-toggle" data-target="signupPw" aria-label="Show password">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </label>
+    <label class="auth-field">
+      <span>Confirm password</span>
+      <div class="auth-pw-wrap">
+        <input type="password" name="confirmPassword" required placeholder="Re-enter your password" autocomplete="new-password" id="signupPwConfirm" />
+        <button type="button" class="auth-pw-toggle" data-target="signupPwConfirm" aria-label="Show password">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </label>
+    <button type="submit" class="btn btn-primary auth-btn" id="signupSubmit">Create account</button>
+  </form>
+
+  <div class="auth-terms">
+    By creating an account, you agree to our Terms of Service and Privacy Policy.
+  </div>
+
+  <div class="auth-footer">
+    Already have an account? <a href="/login">Sign in</a>
+  </div>
+</AuthLayout>
+
+<script>
+  const form = document.getElementById('signupForm') as HTMLFormElement;
+  const errorEl = document.getElementById('signupError');
+  const submitBtn = document.getElementById('signupSubmit') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl!.innerHTML = '';
+
+    const fd = new FormData(form);
+    const password = String(fd.get('password') || '');
+    const confirmPassword = String(fd.get('confirmPassword') || '');
+
+    if (password !== confirmPassword) {
+      if (errorEl) {
+        errorEl.innerHTML = '<div class="auth-error">Passwords do not match.</div>';
+      }
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        body: fd,
+        redirect: 'manual',
+      });
+
+      if (res.type === 'opaqueredirect' || res.status === 0 || (res.status >= 200 && res.status < 400)) {
+        window.location.href = '/';
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (errorEl) {
+        errorEl.innerHTML = `<div class="auth-error">${data.error || 'Sign up failed. Please try again.'}</div>`;
+      }
+    } catch {
+      if (errorEl) {
+        errorEl.innerHTML = '<div class="auth-error">Network error. Please try again.</div>';
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+    }
+  });
+
+  // Password show/hide toggle
+  document.querySelectorAll('.auth-pw-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = (btn as HTMLElement).dataset.target;
+      const input = targetId ? document.getElementById(targetId) as HTMLInputElement : null;
+      if (!input) return;
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      btn.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+    });
+  });
+</script>

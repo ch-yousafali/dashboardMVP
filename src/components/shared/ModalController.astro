@@ -1,0 +1,224 @@
+---
+// Modal controller — handles all dynamic modal forms across the app.
+// Included once in DashboardLayout.
+
+interface Props {
+  workspaceId: string;
+}
+
+const { workspaceId } = Astro.props;
+
+const MODAL_CONFIG = {
+  event: {
+    title: 'Calendar event',
+    endpoint: '/api/calendar/events',
+    fields: [
+      { name: 'title', label: 'Event title', type: 'text', required: true, wide: true },
+      { name: 'date', label: 'Date', type: 'date', required: true },
+      { name: 'time', label: 'Time (optional)', type: 'text', placeholder: 'e.g. 10:00 AM' },
+      { name: 'type', label: 'Type', type: 'select', options: ['meeting', 'production', 'deadline'] },
+      { name: 'notes', label: 'Notes', type: 'textarea', wide: true },
+    ],
+  },
+  preorder: {
+    title: 'Pre-order',
+    endpoint: '/api/pre-orders',
+    fields: [
+      { name: 'product', label: 'Product name', type: 'text', required: true, wide: true },
+      { name: 'orders', label: 'Number of orders', type: 'number', required: true },
+      { name: 'status', label: 'Status', type: 'select', options: ['Sourced', 'In Production', 'Washing', 'Shipped'] },
+      { name: 'expected', label: 'Expected arrival', type: 'date' },
+      { name: 'shipping', label: 'Shipping date', type: 'date' },
+      { name: 'progress', label: 'Progress (%)', type: 'number' },
+    ],
+  },
+  videoidea: {
+    title: 'Video idea',
+    endpoint: '/api/video-ideas',
+    fields: [
+      { name: 'title', label: 'Title', type: 'text', required: true, wide: true },
+      { name: 'description', label: 'Description', type: 'textarea', wide: true },
+      { name: 'status', label: 'Status', type: 'select', options: ['Idea', 'Planning', 'In Progress', 'Completed'] },
+      { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'] },
+    ],
+  },
+  note: {
+    title: 'Note',
+    endpoint: '/api/notes',
+    fields: [
+      { name: 'text', label: 'Note', type: 'textarea', required: true, wide: true },
+      { name: 'color', label: 'Color', type: 'color', wide: true },
+    ],
+  },
+  bulkorder: {
+    title: 'Bulk order',
+    endpoint: '/api/bulk-orders',
+    fields: [
+      { name: 'supplier', label: 'Supplier', type: 'text', required: true },
+      { name: 'product', label: 'Product', type: 'text', required: true },
+      { name: 'quantity', label: 'Quantity', type: 'number', required: true },
+      { name: 'cost', label: 'Cost ($)', type: 'number', required: true },
+      { name: 'date', label: 'Date', type: 'date' },
+      { name: 'status', label: 'Status', type: 'select', options: ['Processing', 'Delivered'] },
+    ],
+  },
+  sample: {
+    title: 'Sample',
+    endpoint: '/api/samples',
+    fields: [
+      { name: 'name', label: 'Sample name', type: 'text', required: true, wide: true },
+      { name: 'product', label: 'Product', type: 'text', required: true },
+      { name: 'supplier', label: 'Supplier', type: 'text', required: true },
+      { name: 'status', label: 'Status', type: 'select', options: ['Requested', 'In Production', 'Shipped', 'Received', 'Approved', 'Rejected'] },
+      { name: 'submitted', label: 'Date submitted', type: 'date' },
+      { name: 'expected', label: 'Expected completion', type: 'date' },
+    ],
+  },
+  tracking: {
+    title: 'Tracking number',
+    endpoint: '/api/tracking',
+    fields: [
+      { name: 'number', label: 'Tracking number', type: 'text', required: true, wide: true },
+      { name: 'carrier', label: 'Carrier', type: 'select', options: ['UPS', 'USPS', 'FedEx', 'DHL'] },
+      { name: 'product', label: 'Related product / order', type: 'text', required: true },
+      { name: 'status', label: 'Status', type: 'select', options: ['Pending', 'In Transit', 'Out for Delivery', 'Delivered', 'Delayed'] },
+      { name: 'eta', label: 'Estimated arrival', type: 'date' },
+    ],
+  },
+};
+---
+
+<script is:inline define:vars={{ MODAL_CONFIG, workspaceId }}>
+  const config = MODAL_CONFIG;
+  const wsId = workspaceId;
+  let modalState = { type: null, editId: null };
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function todayISO() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }
+
+  function openModal(type, editId, defaults) {
+    const cfg = config[type];
+    if (!cfg) return;
+    modalState = { type, editId: editId || null };
+
+    const titleEl = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('modalSubmit');
+    const form = document.getElementById('modalForm');
+
+    if (titleEl) titleEl.textContent = (editId ? 'Edit ' : 'Add ') + cfg.title.toLowerCase();
+    if (submitBtn) submitBtn.textContent = editId ? 'Save changes' : 'Save';
+
+    if (form) {
+      form.innerHTML = cfg.fields.map((f) => {
+        const val = defaults && defaults[f.name] !== undefined ? defaults[f.name] : (f.type === 'date' ? todayISO() : '');
+        const wideClass = f.wide ? 'field-wide' : '';
+        if (f.type === 'select') {
+          return `<label class="field ${wideClass}"><span>${f.label}</span>
+            <div class="hq-select"><select class="hq-select-native" name="${f.name}" ${f.required ? 'required' : ''}>
+              ${f.options.map((o) => `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}
+            </select></div></label>`;
+        }
+        if (f.type === 'date') {
+          return `<label class="field ${wideClass}"><span>${f.label}</span>
+            <div class="hq-date-wrap"><input type="date" class="hq-date-native" name="${f.name}" value="${escapeHtml(val)}" ${f.required ? 'required' : ''}></div></label>`;
+        }
+        if (f.type === 'color') {
+          return `<label class="field ${wideClass}"><span>${f.label}</span>
+            <div class="hq-color-wrap" data-hq-color>
+              <input type="hidden" name="${f.name}" class="hq-color-input" value="${escapeHtml(val || 'default')}">
+              <button type="button" class="hq-color-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="hq-color-swatch hq-color-swatch-${escapeHtml(val || 'default')}"></span>
+                <span class="hq-color-label">${escapeHtml((val || 'default'))}</span>
+                <svg class="hq-color-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              </button>
+            </div></label>`;
+        }
+        if (f.type === 'textarea') {
+          return `<label class="field ${wideClass}"><span>${f.label}</span>
+            <textarea name="${f.name}" rows="3" ${f.required ? 'required' : ''} placeholder="${f.placeholder || ''}">${escapeHtml(val)}</textarea></label>`;
+        }
+        return `<label class="field ${wideClass}"><span>${f.label}</span>
+          <input type="${f.type}" name="${f.name}" value="${escapeHtml(val)}" ${f.required ? 'required' : ''} placeholder="${f.placeholder || ''}"></label>`;
+      }).join('');
+    }
+
+    document.getElementById('modalOverlay')?.classList.add('active');
+    // Focus the first interactive control (skip hidden HQSelect natives).
+    const firstInput = form?.querySelector('input:not([type="hidden"]):not(.hq-select-native), textarea:not(.hq-select-native), .hq-select-trigger');
+    if (firstInput) setTimeout(() => firstInput.focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay')?.classList.remove('active');
+    modalState = { type: null, editId: null };
+  }
+
+  // Expose globally
+  window.hqOpenModal = openModal;
+  window.hqCloseModal = closeModal;
+
+  // Wire up data-modal buttons
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-modal]');
+    if (!btn) return;
+    e.preventDefault();
+    openModal(btn.dataset.modal);
+  });
+
+  // Modal form submit
+  var modalSubmitting = false;
+  document.getElementById('modalForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (modalSubmitting) return;
+    const cfg = config[modalState.type];
+    if (!cfg) return;
+    const formData = new FormData(e.target);
+    const obj = {};
+    cfg.fields.forEach((f) => { obj[f.name] = formData.get(f.name); });
+    obj.workspaceId = wsId;
+
+    const url = modalState.editId ? `${cfg.endpoint}/${modalState.editId}` : cfg.endpoint;
+    const method = modalState.editId ? 'PUT' : 'POST';
+
+    modalSubmitting = true;
+    const submitBtn = document.getElementById('modalSubmit');
+    const originalText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
+      submitBtn.style.opacity = '0.7';
+    }
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(obj),
+      });
+      if (res.ok) {
+        closeModal();
+        if (window.hqToast) window.hqToast(`${cfg.title} ${modalState.editId ? 'updated' : 'added'}`);
+        // Reload to show updated data
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (window.hqToast) window.hqToast(data.error || 'Failed to save');
+      }
+    } catch (err) {
+      if (window.hqToast) window.hqToast('Network error');
+    } finally {
+      modalSubmitting = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        submitBtn.style.opacity = '';
+      }
+    }
+  });
+</script>

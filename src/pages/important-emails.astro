@@ -1,0 +1,75 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass, capitalize } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const emails = await db.select().from(schema.importantEmails).where(eq(schema.importantEmails.workspaceId, wsId));
+const sortedEmails = [...emails].sort((a, b) => b.date.localeCompare(a.date));
+---
+
+<DashboardLayout title="Important Emails — Business HQ" activeSection="important-emails" pageTitle="Important Emails">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Important emails</h2>
+        <div class="panel-head-actions">
+          <div class="search-box search-box-small">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke-width="1.6" /><path d="m20 20-3.5-3.5" stroke-width="1.6" /></svg>
+            <input type="text" id="emailsSearch" placeholder="Search emails…" />
+          </div>
+          <div class="hq-select hq-select-sm" style="width:auto; min-width:150px;">
+            <select class="hq-select-native" id="emailsFilter">
+              <option value="all">All statuses</option>
+              <option value="unread">Unread</option>
+              <option value="read">Read</option>
+              <option value="flagged">Flagged</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Sender</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="emailsTableBody">
+            {sortedEmails.length === 0 ? (
+              <tr><td colspan="4" class="empty-state">No emails yet.</td></tr>
+            ) : sortedEmails.map(e => (
+              <tr data-sender={e.sender} data-subject={e.subject} data-status={e.status}>
+                <td><strong>{e.sender}</strong></td>
+                <td>{e.subject}</td>
+                <td>{fmtDate(e.date)}</td>
+                <td><span class={`badge ${statusBadgeClass(e.status)}`}>{capitalize(e.status)}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script>
+  const search = document.getElementById('emailsSearch');
+  const filter = document.getElementById('emailsFilter');
+
+  function applyFilters() {
+    const q = (search?.value || '').toLowerCase();
+    const f = filter?.value || 'all';
+    document.querySelectorAll('#emailsTableBody tr[data-sender]').forEach(row => {
+      const sender = (row.dataset.sender || '').toLowerCase();
+      const subject = (row.dataset.subject || '').toLowerCase();
+      const status = row.dataset.status || '';
+      const matchesText = !q || sender.includes(q) || subject.includes(q);
+      const matchesFilter = f === 'all' || status === f;
+      row.style.display = matchesText && matchesFilter ? '' : 'none';
+    });
+  }
+
+  search?.addEventListener('input', applyFilters);
+  filter?.addEventListener('change', applyFilters);
+</script>

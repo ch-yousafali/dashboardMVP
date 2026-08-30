@@ -1,0 +1,76 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, WEEKDAYS, todayISO, addDays } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const salesDaily = await db.select().from(schema.salesDaily).where(eq(schema.salesDaily.workspaceId, wsId)).orderBy(schema.salesDaily.date).limit(7);
+const orders = await db.select().from(schema.salesRecords).where(eq(schema.salesRecords.workspaceId, wsId)).orderBy(schema.salesRecords.createdAt).limit(10);
+
+const todaySales = salesDaily.filter(s => s.date === todayISO()).reduce((sum, s) => sum + s.total, 0) || salesDaily[salesDaily.length - 1]?.total || 0;
+const weekToDate = salesDaily.reduce((sum, s) => sum + s.total, 0);
+const aov = salesDaily[salesDaily.length - 1]?.aov || 58;
+const maxSales = Math.max(...salesDaily.map(s => s.total), 1);
+
+const today = new Date();
+const salesCards = [
+  { label: "Today's Sales", value: `$${todaySales.toLocaleString()}` },
+  { label: 'Average Order Value', value: `$${aov}` },
+  { label: 'Week-to-Date', value: `$${weekToDate.toLocaleString()}` },
+  { label: 'Monthly Sales', value: `$${(weekToDate * 4).toLocaleString()}` },
+];
+---
+
+<DashboardLayout title="Sales — Business HQ" activeSection="sales" pageTitle="Sales">
+  <section class="view active">
+    <div class="cards-grid">
+      {salesCards.map(c => (
+        <div class="stat-card">
+          <div class="stat-label">{c.label}</div>
+          <div class="stat-value">{c.value}</div>
+        </div>
+      ))}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Sales — last 7 days</h2></div>
+      <div class="bar-chart">
+        {salesDaily.map((s, i) => {
+          const d = new Date(today);
+          d.setDate(d.getDate() - (6 - i));
+          return (
+            <div class="bar-col">
+              <div class="bar-value">${s.total}</div>
+              <div class="bar" style={`height:${(s.total / maxSales) * 100}%`}></div>
+              <div class="bar-label">{WEEKDAYS[d.getDay()]}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Recent orders</h2></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Date</th></tr></thead>
+          <tbody>
+            {orders.length === 0 ? (
+              <tr><td colspan="5" class="empty-state">No recent orders.</td></tr>
+            ) : orders.reverse().map(o => (
+              <tr>
+                <td>{o.orderId}</td>
+                <td>{o.customer}</td>
+                <td>{o.items}</td>
+                <td>${o.total.toFixed(2)}</td>
+                <td>{fmtDate(o.date)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

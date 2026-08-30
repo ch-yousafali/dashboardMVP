@@ -1,0 +1,47 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+if (Astro.locals.workspace) {
+  return Astro.redirect('/');
+}
+---
+
+<BaseLayout title="Welcome — Business HQ">
+  <div class="auth-shell" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+    <div style="width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 28px; box-shadow:0 20px 55px rgba(53,38,88,.18), 0 0 0 1px rgba(102,78,154,.08);">
+      <div style="display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:24px;">
+        <div class="brand-mark">HQ</div>
+        <span style="font-weight:600; font-size:17px;">Business HQ</span>
+      </div>
+      <h1 style="font-size:18px; font-weight:600; text-align:center; margin-bottom:6px;">Set up your workspace</h1>
+      <p style="font-size:13px; color:var(--text-tertiary); text-align:center; margin-bottom:22px;">Name your business workspace to get started.</p>
+      <form id="onboardingForm" style="display:flex; flex-direction:column; gap:14px;">
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:12.6px; font-weight:600; color:var(--text-secondary);">Business name</span>
+          <input type="text" name="name" required placeholder="e.g. Alden & Co." />
+        </label>
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:10px 18px; font-size:13.5px;">Create workspace</button>
+      </form>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  document.getElementById('onboardingForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const res = await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: fd.get('name') }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      document.cookie = `hq_workspace=${data.workspaceId}; path=/; max-age=2592000`;
+      window.location.href = '/';
+    }
+  });
+</script>

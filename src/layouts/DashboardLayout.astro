@@ -1,0 +1,788 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '@/components/layout/Sidebar.astro';
+import Topbar from '@/components/layout/Topbar.astro';
+import ModalRoot from '@/components/shared/ModalRoot.astro';
+import ModalController from '@/components/shared/ModalController.astro';
+import ToastContainer from '@/components/shared/ToastContainer.astro';
+import HQSelect from '@/components/shared/HQSelect.astro';
+
+interface Props {
+  title?: string;
+  activeSection: string;
+  pageTitle: string;
+}
+
+const { title = 'Business HQ', activeSection, pageTitle } = Astro.props;
+
+const user = Astro.locals.user;
+const profile = Astro.locals.profile;
+const workspace = Astro.locals.workspace;
+const role = Astro.locals.role;
+
+// Redirect to login if not authenticated
+if (!user) {
+  return Astro.redirect('/login');
+}
+if (!workspace) {
+  return Astro.redirect('/onboarding');
+}
+
+const ownerName = profile?.fullName || user.email;
+const ownerInitials = profile?.avatarInitials || (ownerName.slice(0, 2).toUpperCase());
+---
+
+<BaseLayout title={title}>
+  <div class="app">
+    <Sidebar activeSection={activeSection} ownerName={ownerName} ownerInitials={ownerInitials} role={role || 'owner'} />
+    <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-width="1.8" fill="none" /></svg>
+    </button>
+    <div class="sidebar-scrim" id="sidebarScrim"></div>
+
+    <div class="main">
+      <Topbar pageTitle={pageTitle} workspaceId={workspace.id} />
+      <main class="content" id="content">
+        <slot />
+      </main>
+    </div>
+  </div>
+
+  <ModalRoot />
+  <ModalController workspaceId={workspace.id} />
+  <ToastContainer />
+  <HQSelect />
+
+  <script is:inline>
+    // HQSelect enhancer — progressive enhancement over native <select>.
+    // Keeps the native select as the value source of truth so FormData,
+    // .value, and change events all keep working unchanged.
+    (function () {
+      var hqInstances = new WeakMap();
+
+      function hqChevron() {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+      }
+
+      function hqBuildMenu(select) {
+        var wrapper = select.closest('.hq-select');
+        if (!wrapper) return null;
+        select.classList.add('hq-select-native');
+        select.setAttribute('aria-hidden', 'true');
+        select.tabIndex = -1;
+        var selOpt = select.options[select.selectedIndex] || select.options[0];
+
+        var trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'hq-select-trigger';
+        if (select.id) trigger.setAttribute('aria-labelledby', select.id);
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        var label = document.createElement('span');
+        label.className = 'hq-select-label';
+        label.textContent = selOpt ? selOpt.textContent : '';
+        trigger.appendChild(label);
+        var chev = document.createElement('span');
+        chev.className = 'hq-select-chevron';
+        chev.innerHTML = hqChevron();
+        trigger.appendChild(chev);
+
+        var menu = document.createElement('div');
+        menu.className = 'hq-select-menu';
+        menu.setAttribute('role', 'listbox');
+        menu.setAttribute('aria-hidden', 'true');
+
+        var opts = [];
+        Array.from(select.options).forEach(function (opt, i) {
+          var item = document.createElement('div');
+          item.className = 'hq-select-option';
+          item.setAttribute('role', 'option');
+          item.dataset.value = opt.value;
+          item.textContent = opt.textContent || '';
+          if (i === select.selectedIndex) {
+            item.classList.add('selected');
+            item.setAttribute('aria-selected', 'true');
+          }
+          if (opt.disabled) {
+            item.classList.add('disabled');
+            item.setAttribute('aria-disabled', 'true');
+          }
+          menu.appendChild(item);
+          opts.push(item);
+        });
+
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(menu);
+        return { trigger: trigger, menu: menu, options: opts };
+      }
+
+      function hqSyncLabel(inst) {
+        var opt = inst.select.options[inst.select.selectedIndex];
+        var label = inst.trigger.querySelector('.hq-select-label');
+        if (label && opt) label.textContent = opt.textContent || '';
+      }
+
+      function hqSyncSelected(inst) {
+        inst.options.forEach(function (el, i) {
+          var isSel = i === inst.select.selectedIndex;
+          el.classList.toggle('selected', isSel);
+          el.setAttribute('aria-selected', String(isSel));
+        });
+      }
+
+      function hqPosition(inst) {
+        inst.menu.style.removeProperty('max-height');
+        var rect = inst.trigger.getBoundingClientRect();
+        var below = window.innerHeight - rect.bottom;
+        var above = rect.top;
+        var maxH = Math.max(120, Math.min(below - 8, above - 8, 260));
+        inst.menu.style.maxHeight = maxH + 'px';
+      }
+
+      function hqOpen(inst) {
+        inst.isOpen = true;
+        inst.trigger.setAttribute('aria-expanded', 'true');
+        inst.menu.classList.add('open');
+        inst.menu.setAttribute('aria-hidden', 'false');
+        var w = inst.select.closest('.hq-select');
+        if (w) w.setAttribute('data-open', '');
+        inst.highlightedIndex = inst.select.selectedIndex;
+        hqPosition(inst);
+        inst.options.forEach(function (el, i) { el.classList.toggle('highlighted', i === inst.highlightedIndex); });
+        var hl = inst.options[inst.highlightedIndex];
+        if (hl) hl.scrollIntoView({ block: 'nearest' });
+      }
+
+      function hqClose(inst) {
+        inst.isOpen = false;
+        inst.trigger.setAttribute('aria-expanded', 'false');
+        inst.menu.classList.remove('open');
+        inst.menu.setAttribute('aria-hidden', 'true');
+        var w = inst.select.closest('.hq-select');
+        if (w) w.removeAttribute('data-open');
+        inst.options.forEach(function (el) { el.classList.remove('highlighted'); });
+      }
+
+      function hqPick(inst, index) {
+        if (index < 0 || index >= inst.select.options.length) return;
+        var opt = inst.select.options[index];
+        if (opt.disabled) return;
+        inst.select.selectedIndex = index;
+        hqSyncLabel(inst);
+        hqSyncSelected(inst);
+        inst.select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      function hqMove(inst, dir) {
+        var i = inst.highlightedIndex;
+        var n = inst.options.length;
+        for (var s = 0; s < n; s++) {
+          i = (i + dir + n) % n;
+          if (!inst.options[i].classList.contains('disabled')) {
+            inst.highlightedIndex = i;
+            inst.options.forEach(function (el, idx) { el.classList.toggle('highlighted', idx === i); });
+            inst.options[i].scrollIntoView({ block: 'nearest' });
+            return;
+          }
+        }
+      }
+
+      function hqEnhance(select) {
+        var wrapper = select.closest('.hq-select');
+        if (!wrapper || hqInstances.has(wrapper)) return hqInstances.get(wrapper) || null;
+        if (select.dataset.hqEnhanced === '1') return null;
+        select.dataset.hqEnhanced = '1';
+
+        var built = hqBuildMenu(select);
+        if (!built) return null;
+        var inst = {
+          select: select,
+          trigger: built.trigger,
+          menu: built.menu,
+          options: built.options,
+          isOpen: false,
+          highlightedIndex: select.selectedIndex,
+        };
+        hqInstances.set(wrapper, inst);
+
+        inst.trigger.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (inst.isOpen) hqClose(inst);
+          else hqOpen(inst);
+        });
+
+        inst.options.forEach(function (item, i) {
+          item.addEventListener('click', function (e) {
+            e.stopPropagation();
+            hqPick(inst, i);
+            hqClose(inst);
+            inst.trigger.focus();
+          });
+          item.addEventListener('mouseenter', function () {
+            if (item.classList.contains('disabled')) return;
+            inst.highlightedIndex = i;
+            inst.options.forEach(function (el, idx) { el.classList.toggle('highlighted', idx === i); });
+          });
+        });
+
+        inst.trigger.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!inst.isOpen) hqOpen(inst);
+            else if (e.key === 'ArrowDown') hqMove(inst, 1);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (inst.isOpen) hqMove(inst, -1);
+          } else if (e.key === 'Escape') {
+            if (inst.isOpen) { hqClose(inst); e.stopPropagation(); }
+          } else if (e.key === 'Tab') {
+            if (inst.isOpen) hqClose(inst);
+          }
+        });
+
+        inst.menu.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowDown') { e.preventDefault(); hqMove(inst, 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); hqMove(inst, -1); }
+          else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            hqPick(inst, inst.highlightedIndex);
+            hqClose(inst);
+            inst.trigger.focus();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            hqClose(inst);
+            inst.trigger.focus();
+          } else if (e.key === 'Tab') {
+            hqClose(inst);
+          }
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!inst.isOpen) return;
+          if (!wrapper.contains(e.target)) hqClose(inst);
+        });
+
+        window.addEventListener('resize', function () { if (inst.isOpen) hqPosition(inst); });
+        window.addEventListener('scroll', function () { if (inst.isOpen) hqPosition(inst); }, true);
+
+        select.addEventListener('change', function () {
+          hqSyncLabel(inst);
+          hqSyncSelected(inst);
+        });
+
+        return inst;
+      }
+
+      function hqEnhanceAll(root) {
+        var scope = root || document;
+        scope.querySelectorAll('select.hq-select-native:not([data-hq-enhanced="1"])').forEach(function (s) {
+          hqEnhance(s);
+        });
+      }
+
+      window.hqSelect = { enhance: hqEnhance, enhanceAll: hqEnhanceAll };
+      hqEnhanceAll();
+
+      var hqMo = new MutationObserver(function () { hqEnhanceAll(); });
+      hqMo.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
+
+  <script is:inline>
+    // HQDatePicker — custom Business HQ date picker.
+    // Progressive enhancement over native <input type="date">.
+    // Replaces the browser-native picker with a controlled popover that
+    // stays within the viewport on mobile.
+    (function () {
+      var dpInstances = new WeakMap();
+      var DP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      var DP_WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+      function dpParseISO(str) {
+        if (!str) return new Date();
+        var parts = str.split('-');
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      }
+
+      function dpFormatDate(d) {
+        return DP_MONTHS[d.getMonth()].slice(0,3) + ' ' + d.getDate() + ', ' + d.getFullYear();
+      }
+
+      function dpToISO(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      }
+
+      function dpBuildTrigger(input) {
+        var wrap = input.closest('.hq-date-wrap');
+        if (!wrap) return null;
+        input.classList.add('hq-date-native');
+        input.style.position = 'absolute';
+        input.style.opacity = '0';
+        input.style.pointerEvents = 'none';
+        input.style.width = '100%';
+        input.style.height = '100%';
+        input.style.inset = '0';
+        input.style.border = '0';
+        input.style.padding = '0';
+        input.style.margin = '0';
+
+        var trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'hq-date-trigger';
+        var val = input.value ? dpParseISO(input.value) : new Date();
+        var label = document.createElement('span');
+        label.className = 'hq-date-label';
+        label.textContent = input.value ? dpFormatDate(val) : 'Select date…';
+        trigger.appendChild(label);
+        var icon = document.createElement('span');
+        icon.className = 'hq-date-icon';
+        icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v2M17 2v2M4 8h16M5 4.5h14A1.5 1.5 0 0 1 20.5 6v14A1.5 1.5 0 0 1 19 21.5H5A1.5 1.5 0 0 1 3.5 20V6A1.5 1.5 0 0 1 5 4.5Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+        trigger.appendChild(icon);
+
+        var popover = document.createElement('div');
+        popover.className = 'hq-date-popover';
+
+        wrap.appendChild(trigger);
+        wrap.appendChild(popover);
+        return { trigger: trigger, popover: popover, curDate: val };
+      }
+
+      function dpRenderPopover(inst) {
+        var d = inst.curDate;
+        var year = d.getFullYear();
+        var month = d.getMonth();
+        var today = new Date();
+        var todayISO = dpToISO(today);
+        var inputISO = inst.input.value;
+
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        var html = '<div class="hq-dp-head">';
+        html += '<button type="button" class="hq-dp-nav" data-dp-dir="-1">‹</button>';
+        html += '<span class="hq-dp-title">' + DP_MONTHS[month] + ' ' + year + '</span>';
+        html += '<button type="button" class="hq-dp-nav" data-dp-dir="1">›</button>';
+        html += '</div>';
+        html += '<div class="hq-dp-weekdays">';
+        DP_WEEKDAYS.forEach(function (w) { html += '<div>' + w + '</div>'; });
+        html += '</div>';
+        html += '<div class="hq-dp-grid">';
+        for (var i = 0; i < firstDay; i++) html += '<div class="hq-dp-empty"></div>';
+        for (var day = 1; day <= daysInMonth; day++) {
+          var cellDate = new Date(year, month, day);
+          var iso = dpToISO(cellDate);
+          var classes = 'hq-dp-day';
+          if (iso === todayISO) classes += ' today';
+          if (iso === inputISO) classes += ' selected';
+          html += '<button type="button" class="' + classes + '" data-dp-day="' + iso + '">' + day + '</button>';
+        }
+        html += '</div>';
+        inst.popover.innerHTML = html;
+      }
+
+      function dpPosition(inst) {
+        var rect = inst.trigger.getBoundingClientRect();
+        var popH = 300;
+        var spaceBelow = window.innerHeight - rect.bottom;
+        var spaceAbove = rect.top;
+        inst.popover.style.removeProperty('left');
+        inst.popover.style.removeProperty('right');
+        inst.popover.style.removeProperty('top');
+        inst.popover.style.removeProperty('bottom');
+
+        // Vertical: prefer below, fallback above, fallback to centered overlay
+        if (spaceBelow >= popH + 10) {
+          inst.popover.style.top = (rect.bottom + 6) + 'px';
+        } else if (spaceAbove >= popH + 10) {
+          inst.popover.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        } else {
+          // Not enough space — center as fixed overlay
+          inst.popover.style.top = '50%';
+          inst.popover.style.transform = 'translateY(-50%)';
+        }
+        if (inst.popover.style.top !== '50%') {
+          inst.popover.style.transform = '';
+        }
+
+        // Horizontal: align to trigger, clamp within viewport
+        var popW = 280;
+        var left = rect.left;
+        if (left + popW > window.innerWidth - 8) {
+          left = window.innerWidth - popW - 8;
+        }
+        if (left < 8) left = 8;
+        inst.popover.style.left = left + 'px';
+      }
+
+      function dpOpen(inst) {
+        inst.isOpen = true;
+        inst.trigger.setAttribute('aria-expanded', 'true');
+        inst.popover.classList.add('open');
+        // Convert to fixed positioning so it escapes modal overflow
+        inst.popover.style.position = 'fixed';
+        dpRenderPopover(inst);
+        dpPosition(inst);
+      }
+
+      function dpClose(inst) {
+        inst.isOpen = false;
+        inst.trigger.setAttribute('aria-expanded', 'false');
+        inst.popover.classList.remove('open');
+        inst.popover.style.transform = '';
+      }
+
+      function dpSetValue(inst, iso) {
+        inst.input.value = iso;
+        var d = dpParseISO(iso);
+        var label = inst.trigger.querySelector('.hq-date-label');
+        if (label) label.textContent = dpFormatDate(d);
+        inst.input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      function dpEnhance(input) {
+        var wrap = input.closest('.hq-date-wrap');
+        if (!wrap || dpInstances.has(wrap)) return dpInstances.get(wrap) || null;
+        if (input.dataset.dpEnhanced === '1') return null;
+        input.dataset.dpEnhanced = '1';
+
+        var built = dpBuildTrigger(input);
+        if (!built) return null;
+        var inst = {
+          input: input,
+          trigger: built.trigger,
+          popover: built.popover,
+          curDate: built.curDate,
+          isOpen: false,
+        };
+        dpInstances.set(wrap, inst);
+
+        inst.trigger.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Sync curDate with current input value
+          if (input.value) inst.curDate = dpParseISO(input.value);
+          if (inst.isOpen) dpClose(inst);
+          else dpOpen(inst);
+        });
+
+        inst.popover.addEventListener('click', function (e) {
+          var navBtn = e.target.closest('[data-dp-dir]');
+          var dayBtn = e.target.closest('[data-dp-day]');
+          if (navBtn) {
+            e.stopPropagation();
+            var dir = parseInt(navBtn.dataset.dpDir);
+            inst.curDate = new Date(inst.curDate.getFullYear(), inst.curDate.getMonth() + dir, 1);
+            dpRenderPopover(inst);
+            dpPosition(inst);
+          } else if (dayBtn) {
+            e.stopPropagation();
+            dpSetValue(inst, dayBtn.dataset.dpDay);
+            dpClose(inst);
+            inst.trigger.focus();
+          }
+        });
+
+        inst.trigger.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (inst.isOpen) dpClose(inst);
+            else dpOpen(inst);
+          } else if (e.key === 'Escape' && inst.isOpen) {
+            e.stopPropagation();
+            dpClose(inst);
+          }
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!inst.isOpen) return;
+          if (!wrap.contains(e.target)) dpClose(inst);
+        });
+
+        window.addEventListener('resize', function () { if (inst.isOpen) dpPosition(inst); });
+        window.addEventListener('scroll', function () { if (inst.isOpen) dpClose(inst); }, true);
+
+        input.addEventListener('change', function () {
+          var label = inst.trigger.querySelector('.hq-date-label');
+          if (label) {
+            if (input.value) label.textContent = dpFormatDate(dpParseISO(input.value));
+            else label.textContent = 'Select date…';
+          }
+        });
+
+        return inst;
+      }
+
+      function dpEnhanceAll(root) {
+        var scope = root || document;
+        scope.querySelectorAll('input.hq-date-native:not([data-dp-enhanced="1"])').forEach(function (input) {
+          dpEnhance(input);
+        });
+      }
+
+      window.hqDatePicker = { enhance: dpEnhance, enhanceAll: dpEnhanceAll };
+      dpEnhanceAll();
+
+      var dpMo = new MutationObserver(function () { dpEnhanceAll(); });
+      dpMo.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
+
+  <script is:inline>
+    // HQColorPicker — Business HQ styled color selector for notes.
+    // Progressive enhancement over a hidden input with a color name value.
+    (function () {
+      var colorInstances = new WeakMap();
+      var COLOR_OPTIONS = [
+        { value: 'default', label: 'Default' },
+        { value: 'yellow', label: 'Yellow' },
+        { value: 'green', label: 'Green' },
+        { value: 'blue', label: 'Blue' },
+        { value: 'purple', label: 'Purple' },
+        { value: 'pink', label: 'Pink' },
+        { value: 'orange', label: 'Orange' },
+        { value: 'gray', label: 'Gray' },
+      ];
+
+      function colorEnhance(wrap) {
+        if (colorInstances.has(wrap)) return colorInstances.get(wrap);
+        var input = wrap.querySelector('.hq-color-input');
+        var trigger = wrap.querySelector('.hq-color-trigger');
+        if (!input || !trigger) return null;
+
+        var inst = { wrap: wrap, input: input, trigger: trigger, popover: null, isOpen: false };
+        colorInstances.set(wrap, inst);
+
+        function buildPopover() {
+          var pop = document.createElement('div');
+          pop.className = 'hq-color-popover';
+          pop.setAttribute('role', 'listbox');
+          var html = '';
+          COLOR_OPTIONS.forEach(function (opt, i) {
+            var selected = input.value === opt.value;
+            html += '<button type="button" class="hq-color-option' + (selected ? ' selected' : '') + '" data-color="' + opt.value + '" role="option" aria-selected="' + (selected ? 'true' : 'false') + '" aria-label="' + opt.label + '" tabindex="' + (i === 0 ? '0' : '-1') + '">';
+            html += '<span class="hq-color-swatch hq-color-swatch-' + opt.value + '"></span>';
+            html += '<span class="hq-color-option-label">' + opt.label + '</span>';
+            if (selected) html += '<svg class="hq-color-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+            html += '</button>';
+          });
+          pop.innerHTML = html;
+          wrap.appendChild(pop);
+          inst.popover = pop;
+        }
+
+        function updateTrigger() {
+          var swatch = trigger.querySelector('.hq-color-swatch');
+          var label = trigger.querySelector('.hq-color-label');
+          var current = COLOR_OPTIONS.find(function (o) { return o.value === input.value; }) || COLOR_OPTIONS[0];
+          if (swatch) {
+            swatch.className = 'hq-color-swatch hq-color-swatch-' + current.value;
+          }
+          if (label) {
+            label.textContent = current.label;
+          }
+        }
+
+        function open() {
+          if (inst.isOpen) return;
+          if (!inst.popover) buildPopover();
+          inst.isOpen = true;
+          trigger.setAttribute('aria-expanded', 'true');
+          inst.popover.classList.add('open');
+          inst.popover.style.position = 'fixed';
+          positionPopover();
+          // Focus the selected option or first
+          var selected = inst.popover.querySelector('.hq-color-option.selected') || inst.popover.querySelector('.hq-color-option');
+          if (selected) setTimeout(function () { selected.focus(); }, 30);
+        }
+
+        function close() {
+          if (!inst.isOpen) return;
+          inst.isOpen = false;
+          trigger.setAttribute('aria-expanded', 'false');
+          if (inst.popover) inst.popover.classList.remove('open');
+        }
+
+        function positionPopover() {
+          if (!inst.popover) return;
+          var rect = trigger.getBoundingClientRect();
+          var popH = 280;
+          var popW = 200;
+          var spaceBelow = window.innerHeight - rect.bottom;
+          var spaceAbove = rect.top;
+          inst.popover.style.removeProperty('left');
+          inst.popover.style.removeProperty('right');
+          inst.popover.style.removeProperty('top');
+          inst.popover.style.removeProperty('bottom');
+          inst.popover.style.transform = '';
+
+          if (spaceBelow >= popH + 10) {
+            inst.popover.style.top = (rect.bottom + 6) + 'px';
+          } else if (spaceAbove >= popH + 10) {
+            inst.popover.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+          } else {
+            inst.popover.style.top = '50%';
+            inst.popover.style.transform = 'translateY(-50%)';
+          }
+          var left = rect.left;
+          if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+          if (left < 8) left = 8;
+          inst.popover.style.left = left + 'px';
+        }
+
+        function selectColor(value) {
+          input.value = value;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          updateTrigger();
+          // Update popover selected states
+          if (inst.popover) {
+            inst.popover.querySelectorAll('.hq-color-option').forEach(function (opt) {
+              var isSel = opt.dataset.color === value;
+              opt.classList.toggle('selected', isSel);
+              opt.setAttribute('aria-selected', isSel ? 'true' : 'false');
+              var check = opt.querySelector('.hq-color-check');
+              if (isSel && !check) {
+                    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svg.setAttribute('class', 'hq-color-check');
+                    svg.setAttribute('viewBox', '0 0 24 24');
+                    svg.setAttribute('aria-hidden', 'true');
+                    svg.innerHTML = '<path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="2"/>';
+                    opt.appendChild(svg);
+                  } else if (!isSel && check) {
+                    check.remove();
+                  }
+            });
+          }
+        }
+
+        trigger.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (inst.isOpen) close();
+          else open();
+        });
+
+        trigger.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (inst.isOpen) close(); else open();
+          } else if (e.key === 'Escape' && inst.isOpen) {
+            e.stopPropagation();
+            close();
+            trigger.focus();
+          }
+        });
+
+        // Delegate popover clicks
+        document.addEventListener('click', function (e) {
+          if (!inst.isOpen) return;
+          var opt = e.target.closest('.hq-color-option');
+          if (opt && inst.popover && inst.popover.contains(opt)) {
+            e.stopPropagation();
+            selectColor(opt.dataset.color);
+            close();
+            trigger.focus();
+            return;
+          }
+          if (!wrap.contains(e.target)) close();
+        });
+
+        // Keyboard navigation inside popover
+        if (inst.popover || true) {
+          wrap.addEventListener('keydown', function (e) {
+            if (!inst.isOpen || !inst.popover) return;
+            var opts = Array.from(inst.popover.querySelectorAll('.hq-color-option'));
+            var idx = opts.indexOf(document.activeElement);
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              var next = idx + 1 < opts.length ? idx + 1 : 0;
+              opts[next].focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              var prev = idx - 1 >= 0 ? idx - 1 : opts.length - 1;
+              opts[prev].focus();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+              if (idx >= 0) {
+                e.preventDefault();
+                selectColor(opts[idx].dataset.color);
+                close();
+                trigger.focus();
+              }
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              close();
+              trigger.focus();
+            }
+          });
+        }
+
+        window.addEventListener('resize', function () { if (inst.isOpen) positionPopover(); });
+        window.addEventListener('scroll', function () { if (inst.isOpen) close(); }, true);
+
+        // Sync if input value changes externally
+        input.addEventListener('change', updateTrigger);
+
+        return inst;
+      }
+
+      function colorEnhanceAll(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.hq-color-wrap:not([data-hq-color-enhanced])').forEach(function (wrap) {
+          wrap.setAttribute('data-hq-color-enhanced', '1');
+          colorEnhance(wrap);
+        });
+      }
+
+      window.hqColorPicker = { enhance: colorEnhance, enhanceAll: colorEnhanceAll };
+      colorEnhanceAll();
+
+      var colorMo = new MutationObserver(function () { colorEnhanceAll(); });
+      colorMo.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
+
+  <script is:inline>
+    // Mobile nav toggle
+    var toggle = document.getElementById('mobileNavToggle');
+    var sidebar = document.getElementById('sidebar');
+    var scrim = document.getElementById('sidebarScrim');
+
+    function openMobileNav() {
+      if (sidebar) sidebar.classList.add('open');
+      if (scrim) scrim.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMobileNav() {
+      if (sidebar) sidebar.classList.remove('open');
+      if (scrim) scrim.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    function toggleMobileNav() {
+      if (sidebar && sidebar.classList.contains('open')) {
+        closeMobileNav();
+      } else {
+        openMobileNav();
+      }
+    }
+
+    if (toggle) toggle.addEventListener('click', toggleMobileNav);
+    if (scrim) scrim.addEventListener('click', closeMobileNav);
+
+    // Close drawer after picking a destination.
+    if (sidebar) {
+      sidebar.querySelectorAll('.nav-item').forEach(function (item) {
+        item.addEventListener('click', closeMobileNav);
+      });
+    }
+
+    // Escape closes the drawer.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMobileNav();
+    });
+
+    // Reset scroll lock if the page is restored from bfcache.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) document.body.style.overflow = '';
+    });
+  </script>
+</BaseLayout>

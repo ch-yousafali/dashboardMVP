@@ -1,0 +1,62 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+---
+
+<DashboardLayout title="Security — Business HQ" activeSection="settings" pageTitle="Security">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head"><h2>Change password</h2></div>
+      <form class="form-grid" id="passwordForm">
+        <label class="field field-wide">
+          <span>Current password</span>
+          <input type="password" name="currentPassword" required autocomplete="current-password" />
+        </label>
+        <label class="field">
+          <span>New password</span>
+          <input type="password" name="newPassword" required minlength="8" autocomplete="new-password" />
+        </label>
+        <label class="field">
+          <span>Confirm new password</span>
+          <input type="password" name="confirmPassword" required minlength="8" autocomplete="new-password" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Update password</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Sessions</h2></div>
+      <div class="toggle-row">
+        <span>Sign out of all other sessions</span>
+        <button class="btn btn-secondary btn-sm" id="revokeSessions">Revoke other sessions</button>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script>
+  document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if (fd.get('newPassword') !== fd.get('confirmPassword')) {
+      if (window.hqToast) window.hqToast('Passwords do not match');
+      return;
+    }
+    const res = await fetch('/api/settings/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentPassword: fd.get('currentPassword'),
+        newPassword: fd.get('newPassword'),
+      }),
+    });
+    if (res.ok) {
+      if (window.hqToast) window.hqToast('Password updated');
+      e.target.reset();
+    } else {
+      const data = await res.json();
+      if (window.hqToast) window.hqToast(data.error || 'Failed to update password');
+    }
+  });
+</script>

@@ -1,0 +1,11 @@
+---
+import NotificationsIsland from '@/components/notifications/NotificationsIsland.tsx';
+
+interface Props {
+  workspaceId: string;
+}
+
+const { workspaceId } = Astro.props;
+---
+
+<NotificationsIsland workspaceId={workspaceId} client:load />

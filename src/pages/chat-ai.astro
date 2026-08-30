@@ -1,0 +1,110 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+---
+
+<DashboardLayout title="Chat with AI — Business HQ" activeSection="chat-ai" pageTitle="Chat with AI">
+  <section class="view active" id="view-chat-ai">
+    <div class="panel chat-panel">
+      <div class="chat-window" id="chatWindow"></div>
+      <div class="chat-suggestions" id="chatSuggestions">
+        <button class="chip" data-cmd="Fabric has arrived in production for Striped Long Sleeve">Fabric arrived — Striped Long Sleeve</button>
+        <button class="chip" data-cmd="Schedule a meeting for September 5">Schedule a meeting Sept 5</button>
+        <button class="chip" data-cmd="What's on my calendar this week?">What's on my calendar?</button>
+        <button class="chip" data-cmd="What stage is Ribbed Tank in?">Status of Ribbed Tank</button>
+        <button class="chip" data-cmd="Remind me to reorder poly mailers">Add a reminder</button>
+      </div>
+      <form class="chat-input-row" id="chatForm">
+        <input type="text" id="chatInput" placeholder="Message your AI — e.g. &quot;Fabric arrived, schedule washing for Sept 5&quot;" autocomplete="off" />
+        <button type="submit" class="btn btn-primary" id="chatSend">Send</button>
+      </form>
+      <p class="chat-disclaimer">AI assistant powered by your configured LLM provider. Messages may be used to take actions on your business data.</p>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script is:inline define:vars={{ wsId: Astro.locals.workspace!.id }}>
+  let chatMessages = [];
+
+  async function loadChat() {
+    try {
+      const res = await fetch(`/api/chat/history?workspaceId=${wsId}`);
+      if (res.ok) {
+        const data = await res.json();
+        chatMessages = data.messages || [];
+      }
+    } catch (e) {}
+    if (chatMessages.length === 0) {
+      chatMessages = [{ role: 'ai', text: "Hi — I can update production status, schedule calendar events, add notes or tasks, and answer quick status questions. Try something like the suggestions below, or type your own." }];
+    }
+    renderChat();
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderChat() {
+    const win = document.getElementById('chatWindow');
+    if (!win) return;
+    win.innerHTML = chatMessages.map(m => `
+      <div class="chat-msg ${m.role}">
+        <div class="chat-avatar">${m.role === 'ai' ? 'AI' : 'You'}</div>
+        <div class="chat-bubble">${escapeHtml(m.text)}${m.actionTag ? `<div class="chat-action-tag">✓ ${escapeHtml(m.actionTag)}</div>` : ''}</div>
+      </div>`).join('');
+    win.scrollTop = win.scrollHeight;
+  }
+
+  async function sendChatMessage(text) {
+    text = text.trim();
+    if (!text) return;
+    chatMessages.push({ role: 'user', text });
+    renderChat();
+
+    const win = document.getElementById('chatWindow');
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-msg ai';
+    typingEl.innerHTML = '<div class="chat-avatar">AI</div><div class="chat-bubble chat-typing"><span></span><span></span><span></span></div>';
+    win.appendChild(typingEl);
+    win.scrollTop = win.scrollHeight;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, workspaceId: wsId }),
+      });
+      typingEl.remove();
+      if (res.ok) {
+        const data = await res.json();
+        chatMessages.push({ role: 'ai', text: data.reply, actionTag: data.actionTag });
+        renderChat();
+        if (data.actionTag && window.hqToast) window.hqToast(data.actionTag);
+        if (data.reload) setTimeout(() => window.location.reload(), 1000);
+      } else {
+        chatMessages.push({ role: 'ai', text: 'Sorry, I could not process that. Please try again.' });
+        renderChat();
+      }
+    } catch (e) {
+      typingEl.remove();
+      chatMessages.push({ role: 'ai', text: 'Connection error. Please try again.' });
+      renderChat();
+    }
+  }
+
+  document.getElementById('chatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    sendChatMessage(input.value);
+    input.value = '';
+  });
+  document.querySelectorAll('#chatSuggestions .chip').forEach(chip => {
+    chip.addEventListener('click', () => sendChatMessage(chip.dataset.cmd));
+  });
+
+  loadChat();
+</script>

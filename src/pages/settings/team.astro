@@ -1,0 +1,126 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const members = await db
+  .select({
+    member: schema.members,
+    profile: schema.profiles,
+    user: schema.users,
+  })
+  .from(schema.members)
+  .innerJoin(schema.users, eq(schema.users.id, schema.members.userId))
+  .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.members.userId))
+  .where(eq(schema.members.workspaceId, wsId));
+
+const invitations = await db
+  .select()
+  .from(schema.invitations)
+  .where(eq(schema.invitations.workspaceId, wsId));
+---
+
+<DashboardLayout title="Team — Business HQ" activeSection="settings" pageTitle="Team">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Team members</h2>
+        <button class="btn btn-primary" id="inviteBtn">+ Invite member</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <tbody>
+            {members.map(m => (
+              <tr>
+                <td><strong>{m.profile?.fullName || m.user.email}</strong></td>
+                <td>{m.user.email}</td>
+                <td><span class={`badge ${m.member.role === 'owner' ? 'badge-purple' : m.member.role === 'admin' ? 'badge-blue' : 'badge-neutral'}`}>{m.member.role}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Pending invitations</h2></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+          <tbody>
+            {invitations.filter(i => i.status === 'pending').length === 0 ? (
+              <tr><td colspan="3" class="empty-state">No pending invitations.</td></tr>
+            ) : invitations.filter(i => i.status === 'pending').map(inv => (
+              <tr>
+                <td>{inv.email}</td>
+                <td>{inv.role}</td>
+                <td><span class="badge badge-orange">Pending</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Invite modal -->
+  <div class="modal-overlay" id="inviteModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Invite team member</h3>
+        <button class="icon-btn" onclick="document.getElementById('inviteModal').classList.remove('active')">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke-width="1.8" fill="none" /></svg>
+        </button>
+      </div>
+      <form id="inviteForm" style="display:flex; flex-direction:column; gap:14px; margin-bottom:18px;">
+        <label class="field">
+          <span>Email address</span>
+          <input type="email" name="email" required placeholder="teammate@example.com" />
+        </label>
+        <label class="field">
+          <span>Role</span>
+          <div class="hq-select">
+            <select class="hq-select-native" name="memberRole">
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </label>
+      </form>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('inviteModal').classList.remove('active')">Cancel</button>
+        <button class="btn btn-primary" id="inviteSubmit">Send invitation</button>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script is:inline define:vars={{ wsId: Astro.locals.workspace!.id }}>
+  document.getElementById('inviteBtn')?.addEventListener('click', () => {
+    document.getElementById('inviteModal').classList.add('active');
+  });
+
+  document.getElementById('inviteSubmit')?.addEventListener('click', async () => {
+    const form = document.getElementById('inviteForm');
+    const fd = new FormData(form);
+    const res = await fetch('/api/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: fd.get('email'), memberRole: fd.get('memberRole') }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('inviteModal').classList.remove('active');
+      if (window.hqToast) window.hqToast(`Invitation sent! Share this link: ${data.inviteUrl}`);
+      window.location.reload();
+    } else {
+      const data = await res.json();
+      if (window.hqToast) window.hqToast(data.error || 'Failed to invite');
+    }
+  });
+</script>

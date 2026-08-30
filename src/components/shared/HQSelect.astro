@@ -1,0 +1,15 @@
+---
+// HQSelect — reusable Business HQ styled dropdown.
+//
+// Progressive enhancement: keeps the native <select> as the source of truth
+// (so FormData, .value, and 'change' events all keep working) but renders a
+// custom Business HQ-styled trigger + menu on top of it.
+//
+// The JS enhancer lives in DashboardLayout.astro as an is:inline script so
+// it runs globally on every dashboard page. Adding class "hq-select-native"
+// to a <select> inside a .hq-select wrapper is all that's needed.
+---
+
+<div class="hq-select" data-hq-select>
+  <slot />
+</div>

@@ -1,0 +1,42 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const samples = await db.select().from(schema.samples).where(eq(schema.samples.workspaceId, wsId));
+---
+
+<DashboardLayout title="Samples — Business HQ" activeSection="samples" pageTitle="Samples">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Samples</h2>
+        <button class="btn btn-primary" data-modal="sample">+ Add Sample</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Sample</th><th>Product</th><th>Supplier</th><th>Status</th><th>Submitted</th><th>Expected</th></tr></thead>
+          <tbody>
+            {samples.length === 0 ? (
+              <tr><td colspan="6" class="empty-state">No samples yet.</td></tr>
+            ) : samples.map(s => (
+              <tr>
+                <td><strong>{s.name}</strong></td>
+                <td>{s.product}</td>
+                <td>{s.supplier}</td>
+                <td><span class={`badge ${statusBadgeClass(s.status)}`}>{s.status}</span></td>
+                <td>{fmtDate(s.submitted || '')}</td>
+                <td>{fmtDate(s.expected || '')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

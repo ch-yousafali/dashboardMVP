@@ -1,0 +1,17 @@
+{
+  "extends": "./node_modules/astro/tsconfigs/strict.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "strictNullChecks": true
+  },
+  "include": ["src", "drizzle.config.ts", ".astro/types.d.ts"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HQ — Business Dashboard</title>
+<style>
+/* ============================================
+   Tokens
+   ============================================ */
+:root{
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+               "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --border: #e5e5ea;
+  --border-soft: #eeeef1;
+
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --accent-soft: #e8f2fd;
+
+  --green: #1e8e3e;
+  --green-soft: #e6f6ea;
+  --orange: #c9720a;
+  --orange-soft: #fbf0df;
+  --red: #d5362f;
+  --red-soft: #fbeceb;
+  --purple: #6b4fbb;
+  --purple-soft: #f0ecfb;
+  --gray-soft: #f0f0f2;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 20px 50px rgba(0,0,0,0.14);
+
+  --sidebar-w: 248px;
+}
+
+*{ box-sizing: border-box; }
+html,body{ height: 100%; }
+body{
+  margin:0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+h1,h2,h3{ margin:0; font-weight: 600; letter-spacing: -0.01em; }
+p{ margin:0; }
+button{ font-family: inherit; }
+ul{ list-style:none; margin:0; padding:0; }
+input, select, textarea, button{ font-size: 14.5px; }
+:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================
+   Layout
+   ============================================ */
+.app{ display:flex; min-height:100vh; }
+
+.sidebar{
+  width: var(--sidebar-w);
+  flex-shrink:0;
+  background: var(--surface);
+  border-right: 1px solid var(--border-soft);
+  display:flex;
+  flex-direction:column;
+  padding: 20px 14px;
+  position: sticky;
+  top:0;
+  height:100vh;
+}
+.sidebar-brand{
+  display:flex; align-items:center; gap:10px;
+  padding: 6px 8px 22px;
+}
+.brand-mark{
+  width:32px; height:32px; border-radius:9px;
+  background: linear-gradient(145deg, #1d1d1f, #3a3a3d);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:13px; letter-spacing: -0.02em;
+}
+.brand-name{ font-weight:600; font-size:15px; letter-spacing:-0.01em; }
+
+.nav{ display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
+.sidebar-footer{ display:flex; flex-direction:column; gap:12px; padding-top: 10px; border-top:1px solid var(--border-soft); margin-top: 10px; }
+
+.nav-item{
+  display:flex; align-items:center; gap:11px;
+  background:none; border:none; cursor:pointer;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13.6px; font-weight: 500;
+  text-align:left; width:100%;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-item svg{ width:18px; height:18px; stroke: currentColor; fill:none; flex-shrink:0; }
+.nav-item:hover{ background: var(--gray-soft); color: var(--text); }
+.nav-item.active{ background: var(--accent-soft); color: var(--accent); }
+.nav-item.active svg{ stroke: var(--accent); }
+
+.owner-card{ display:flex; align-items:center; gap:10px; padding: 6px 8px; }
+.avatar{
+  width:32px; height:32px; border-radius:50%;
+  background: var(--purple-soft); color: var(--purple);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:600; font-size:12.5px;
+}
+.owner-name{ font-size:13px; font-weight:600; }
+.owner-role{ font-size:12px; color: var(--text-tertiary); }
+
+.main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 20px 32px;
+  position: sticky; top:0; z-index: 5;
+  background: rgba(245,245,247,0.86);
+  backdrop-filter: saturate(180%) blur(14px);
+}
+.page-title{ font-size: 24px; }
+.topbar-actions{ display:flex; align-items:center; gap:12px; }
+
+.search-box{
+  display:flex; align-items:center; gap:8px;
+  background:#f4f4f5; border:0;
+  border-radius:999px; padding:0 12px; width:300px; height:32px;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+.search-box:hover{ background:#eeeeef; }
+.search-box:focus-within{
+  background:#f4f4f5;
+  box-shadow:0 0 0 2px rgba(0,113,227,.10);
+}
+.search-box svg{ width:14px; height:14px; stroke:var(--text-secondary); flex-shrink:0; }
+.search-box input{
+  border:none; outline:none; background:none; width:100%;
+  color:var(--text); font-size:12px; min-width:0;
+}
+.search-box input::placeholder{ color:#6e6e73; opacity:1; }
+.search-box-small{ width:200px; }
+
+.icon-btn{
+  width:36px; height:36px; border-radius:50%;
+  border:1px solid var(--border); background: var(--surface);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; color: var(--text-secondary);
+  transition: background .15s ease;
+}
+.icon-btn svg{ width:17px; height:17px; stroke:currentColor; fill:none; }
+.icon-btn:hover{ background: var(--gray-soft); }
+.icon-btn .dot{
+  position:absolute; top:7px; right:8px; width:7px; height:7px;
+  background: var(--red); border-radius:50%; border: 1.5px solid var(--surface);
+}
+
+.content{ padding: 8px 32px 48px; flex:1; }
+.view{ display:none; animation: fadeIn .25s ease; }
+.view.active{ display:block; }
+@keyframes fadeIn{ from{ opacity:0; transform: translateY(4px);} to{opacity:1; transform:none;} }
+
+/* ============================================
+   Cards / panels
+   ============================================ */
+.cards-grid{
+  display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom: 20px;
+}
+.stat-card{
+  background: var(--surface); border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg); padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-card .stat-label{ font-size:12.5px; color: var(--text-tertiary); font-weight:500; }
+.stat-card .stat-value{ font-size: 25px; font-weight:650; letter-spacing:-0.02em; margin-top:6px; }
+.stat-card .stat-delta{ font-size:12.5px; margin-top:6px; font-weight:600; }
+.stat-delta.up{ color: var(--green); }
+.stat-delta.down{ color: var(--red); }
+
+.two-col{ display:grid; grid-template-columns: 1.3fr 1fr; gap:16px; margin-bottom: 16px; }
+
+.panel{
+  background: var(--surface); border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg); padding: 20px 22px;
+  box-shadow: var(--shadow-sm); margin-bottom: 16px;
+}
+.panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap: 12px; flex-wrap:wrap; }
+.panel-head h2{ font-size:16.5px; }
+.panel-head-actions{ display:flex; align-items:center; gap:10px; }
+
+.link-btn{
+  background:none; border:none; color: var(--accent); font-weight:600;
+  font-size:13px; cursor:pointer; padding:4px 6px;
+}
+.link-btn:hover{ text-decoration: underline; }
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn{
+  border-radius: 980px; padding: 9px 18px; font-weight:600; font-size:13.5px;
+  cursor:pointer; border:1px solid transparent; transition: background .15s ease, transform .05s ease;
+}
+.btn:active{ transform: scale(0.98); }
+.btn-primary{ background: var(--accent); color:#fff; }
+.btn-primary:hover{ background: var(--accent-hover); }
+.btn-secondary{ background: var(--gray-soft); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover{ background: #e4e4e7; }
+.btn-danger{ background: var(--red-soft); color: var(--red); }
+.btn-sm{ padding:6px 13px; font-size:12.5px; }
+
+.quick-actions{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+.quick-action{
+  display:flex; align-items:center; gap:9px;
+  background: var(--surface-2); border:1px solid var(--border);
+  border-radius: var(--radius-md); padding: 13px 14px;
+  font-weight:600; font-size:13px; color: var(--text); cursor:pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.quick-action svg{ width:16px; height:16px; stroke: var(--accent); flex-shrink:0; }
+.quick-action:hover{ background: var(--accent-soft); border-color: var(--accent); }
+
+/* ============================================
+   Lists
+   ============================================ */
+.upcoming-list, .activity-list{ display:flex; flex-direction:column; gap:2px; }
+.upcoming-list li, .activity-list li{
+  display:flex; align-items:flex-start; gap:12px;
+  padding: 10px 6px; border-bottom: 1px solid var(--border-soft);
+}
+.upcoming-list li:last-child, .activity-list li:last-child{ border-bottom:none; }
+.event-date-chip{
+  min-width: 44px; text-align:center; background: var(--gray-soft);
+  border-radius: 9px; padding: 5px 4px; flex-shrink:0;
+}
+.event-date-chip .d{ font-size:15px; font-weight:700; line-height:1; }
+.event-date-chip .m{ font-size:9.5px; color: var(--text-tertiary); text-transform:uppercase; font-weight:600; }
+.upcoming-list .li-title{ font-weight:600; font-size:13.6px; }
+.upcoming-list .li-sub{ font-size:12.3px; color: var(--text-tertiary); margin-top:2px; }
+.activity-dot{ width:8px; height:8px; border-radius:50%; background: var(--accent); margin-top:5px; flex-shrink:0; }
+.activity-list .li-title{ font-size:13.4px; }
+.activity-list .li-sub{ font-size:12px; color: var(--text-tertiary); margin-top:2px; }
+.empty-state{ padding: 30px 10px; text-align:center; color: var(--text-tertiary); font-size:13.5px; }
+
+/* ============================================
+   Tables
+   ============================================ */
+.table-wrap{ overflow-x:auto; }
+.data-table{ width:100%; border-collapse: collapse; }
+.data-table th{
+  text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
+  color: var(--text-tertiary); font-weight:600; padding: 8px 10px; border-bottom:1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td{ padding: 12px 10px; border-bottom: 1px solid var(--border-soft); font-size:13.5px; vertical-align:middle; }
+.data-table tr:last-child td{ border-bottom:none; }
+.data-table tr:hover td{ background: var(--surface-2); }
+
+/* ============================================
+   Badges
+   ============================================ */
+.badge{
+  display:inline-flex; align-items:center; padding: 4px 10px; border-radius:980px;
+  font-size:11.6px; font-weight:600; white-space:nowrap;
+}
+.badge-green{ background: var(--green-soft); color: var(--green); }
+.badge-orange{ background: var(--orange-soft); color: var(--orange); }
+.badge-red{ background: var(--red-soft); color: var(--red); }
+.badge-blue{ background: var(--accent-soft); color: var(--accent); }
+.badge-purple{ background: var(--purple-soft); color: var(--purple); }
+.badge-neutral{ background: var(--gray-soft); color: var(--text-secondary); }
+
+/* progress bar */
+.progress-track{ width:100px; height:6px; background: var(--gray-soft); border-radius:6px; overflow:hidden; }
+.progress-fill{ height:100%; background: var(--accent); border-radius:6px; }
+
+/* ============================================
+   Cards list (video ideas, tracking, updates)
+   ============================================ */
+.card-list{ display:flex; flex-direction:column; gap:10px; }
+.item-card{
+  border:1px solid var(--border-soft); border-radius: var(--radius-md);
+  padding: 14px 16px; background: var(--surface-2);
+  display:flex; justify-content:space-between; gap:16px; align-items:flex-start;
+}
+.item-card-main{ flex:1; min-width:0; }
+.item-card-title{ font-weight:600; font-size:14px; margin-bottom:3px; }
+.item-card-desc{ font-size:12.8px; color: var(--text-secondary); margin-bottom:8px; }
+.item-card-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; color: var(--text-tertiary); }
+.item-card-actions{ display:flex; gap:8px; flex-shrink:0; }
+
+/* ============================================
+   Notes grid
+   ============================================ */
+.notes-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:14px; }
+.note-card{
+  border-radius: var(--radius-md); padding: 14px 15px; min-height:120px;
+  background: #fdf6d8; border: 1px solid #f1e4a8;
+  display:flex; flex-direction:column; justify-content:space-between; position:relative;
+}
+.note-card.pinned{ background: #fdeee0; border-color:#f4d3ae; }
+.note-card-text{ font-size:13.2px; line-height:1.5; white-space:pre-wrap; }
+.note-card-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+.note-card-date{ font-size:11px; color: var(--text-tertiary); }
+.note-card-actions{ display:flex; gap:6px; }
+.note-icon-btn{ background:none; border:none; cursor:pointer; color: var(--text-tertiary); padding:2px; }
+.note-icon-btn:hover{ color: var(--text); }
+.note-icon-btn svg{ width:14px; height:14px; stroke:currentColor; fill:none; }
+
+/* ============================================
+   Forms / modal
+   ============================================ */
+.form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px 16px; }
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field span{ font-size:12.6px; font-weight:600; color: var(--text-secondary); }
+.field-wide{ grid-column: 1 / -1; }
+input[type=text], input[type=email], input[type=number], input[type=date], input[type=datetime-local], select, textarea{
+  border:1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px;
+  background: var(--surface); color: var(--text); outline:none; width:100%;
+  transition: border-color .15s ease;
+}
+input:focus, select:focus, textarea:focus{ border-color: var(--accent); }
+textarea{ resize: vertical; font-family: inherit; }
+.form-actions{ grid-column: 1/-1; display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
+
+.modal-overlay{
+  position:fixed; inset:0; background: rgba(0,0,0,0.32);
+  display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.active{ display:flex; }
+.modal{
+  background: var(--surface); border-radius: var(--radius-lg); padding: 24px 26px;
+  width:100%; max-width:520px; box-shadow: var(--shadow-lg);
+  max-height: 88vh; overflow-y:auto;
+  animation: modalIn .18s ease;
+}
+@keyframes modalIn{ from{ opacity:0; transform: translateY(10px) scale(.98);} to{ opacity:1; transform:none; } }
+.modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.modal-form-grid{ margin-bottom: 18px; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:10px; }
+
+.toggle-row{ display:flex; justify-content:space-between; align-items:center; padding:11px 2px; border-bottom:1px solid var(--border-soft); font-size:13.6px; }
+.toggle-row:last-child{ border-bottom:none; }
+.switch{ position:relative; display:inline-block; width:40px; height:24px; flex-shrink:0; }
+.switch input{ opacity:0; width:0; height:0; }
+.slider{ position:absolute; cursor:pointer; inset:0; background: #d1d1d6; border-radius:999px; transition:.2s; }
+.slider:before{ content:""; position:absolute; height:18px; width:18px; left:3px; top:3px; background:white; border-radius:50%; transition:.2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.switch input:checked + .slider{ background: var(--green); }
+.switch input:checked + .slider:before{ transform: translateX(16px); }
+
+.integration-row{ display:flex; justify-content:space-between; align-items:center; padding: 12px 2px; border-bottom:1px solid var(--border-soft); gap:16px; }
+.integration-row:last-child{ border-bottom:none; }
+.integration-row p{ font-size:12.5px; color: var(--text-tertiary); margin-top:2px; }
+
+/* ============================================
+   Calendar
+   ============================================ */
+.calendar-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.calendar-nav{ display:flex; align-items:center; gap:14px; }
+.calendar-nav h2{ font-size:16.5px; min-width:150px; text-align:center; }
+.calendar-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+.calendar-grid.weekdays-row{ margin-bottom:6px; }
+#calendarWeekdays div{ text-align:center; font-size:11.5px; font-weight:600; color: var(--text-tertiary); padding:6px 0; text-transform:uppercase; letter-spacing:.03em; }
+.cal-cell{
+  min-height: 86px; min-width: 0; border-radius:10px; border:1px solid var(--border-soft);
+  padding:7px; background: var(--surface-2); cursor:pointer; display:flex; flex-direction:column; gap:4px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.cal-cell:hover{ border-color: var(--accent); background: var(--accent-soft); }
+.cal-cell.empty{ background:transparent; border:none; cursor:default; }
+.cal-cell.empty:hover{ background:transparent; }
+.cal-cell.today{ border-color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-cell .cal-date-num{ font-size:12.5px; font-weight:600; }
+.cal-cell.today .cal-date-num{ color: var(--accent); }
+.cal-event-chip{
+  font-size:10.6px; font-weight:600; padding:2px 6px; border-radius:5px; width:100%; min-width:0;
+  background: var(--accent-soft); color: var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.cal-event-chip.type-production{ background: var(--purple-soft); color: var(--purple); }
+.cal-event-chip.type-deadline{ background: var(--red-soft); color: var(--red); }
+
+/* ============================================
+   Bar chart (pure CSS)
+   ============================================ */
+.bar-chart{ display:flex; align-items:flex-end; gap:14px; height:180px; padding-top:10px; }
+.bar-col{ flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end; }
+.bar{ width:100%; max-width:38px; background: linear-gradient(180deg, var(--accent), #4da3f0); border-radius:6px 6px 3px 3px; transition: height .4s ease; }
+.bar-label{ font-size:11px; color: var(--text-tertiary); font-weight:600; }
+.bar-value{ font-size:10.5px; color: var(--text-secondary); font-weight:600; }
+
+/* ============================================
+   Cost breakdown
+   ============================================ */
+.breakdown-list{ display:flex; flex-direction:column; gap:12px; }
+.breakdown-row{ display:flex; align-items:center; gap:12px; }
+.breakdown-row .b-label{ width:120px; font-size:13px; font-weight:600; flex-shrink:0; }
+.breakdown-row .b-track{ flex:1; height:8px; background: var(--gray-soft); border-radius:6px; overflow:hidden; }
+.breakdown-row .b-fill{ height:100%; border-radius:6px; background: var(--accent); }
+.breakdown-row .b-value{ width:64px; text-align:right; font-size:12.5px; color: var(--text-secondary); font-weight:600; }
+
+/* ============================================
+   Tracking timeline
+   ============================================ */
+.tracking-timeline{ display:flex; align-items:center; margin-top:12px; }
+.tt-step{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; }
+.tt-dot{ width:12px; height:12px; border-radius:50%; background: var(--border); z-index:1; }
+.tt-step.done .tt-dot{ background: var(--accent); }
+.tt-step.current .tt-dot{ background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.tt-line{ position:absolute; top:5px; left:-50%; width:100%; height:2px; background: var(--border); z-index:0; }
+.tt-step.done .tt-line{ background: var(--accent); }
+.tt-step:first-child .tt-line{ display:none; }
+.tt-label{ font-size:10.5px; margin-top:8px; color: var(--text-tertiary); font-weight:600; text-align:center; }
+.tt-step.done .tt-label, .tt-step.current .tt-label{ color: var(--text); }
+
+/* ============================================
+   Chat with AI
+   ============================================ */
+.chat-panel{ display:flex; flex-direction:column; height: calc(100vh - 150px); min-height: 480px; padding: 18px 18px 16px; }
+.chat-window{
+  flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
+  padding: 6px 6px 12px;
+}
+.chat-msg{ display:flex; gap:10px; max-width: 78%; }
+.chat-msg.user{ align-self:flex-end; flex-direction:row-reverse; }
+.chat-msg.ai{ align-self:flex-start; }
+.chat-avatar{
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700;
+}
+.chat-msg.ai .chat-avatar{ background: #1d1d1f; color:#fff; }
+.chat-msg.user .chat-avatar{ background: var(--purple-soft); color: var(--purple); }
+.chat-bubble{
+  padding: 10px 14px; border-radius: 16px; font-size:13.6px; line-height:1.5;
+}
+.chat-msg.ai .chat-bubble{ background: var(--surface-2); border:1px solid var(--border-soft); border-top-left-radius:4px; }
+.chat-msg.user .chat-bubble{ background: var(--accent); color:#fff; border-top-right-radius:4px; }
+.chat-bubble .chat-action-tag{
+  display:inline-flex; align-items:center; gap:5px; margin-top:8px; padding:4px 10px;
+  background: var(--green-soft); color: var(--green); border-radius:980px; font-size:11.5px; font-weight:700;
+}
+.chat-typing{ display:flex; gap:4px; padding:12px 14px; }
+.chat-typing span{ width:6px; height:6px; border-radius:50%; background: var(--text-tertiary); animation: typingBounce 1s infinite ease-in-out; }
+.chat-typing span:nth-child(2){ animation-delay:.15s; }
+.chat-typing span:nth-child(3){ animation-delay:.3s; }
+@keyframes typingBounce{ 0%,60%,100%{ transform: translateY(0); opacity:.5; } 30%{ transform: translateY(-4px); opacity:1; } }
+
+.chat-suggestions{ display:flex; gap:8px; flex-wrap:wrap; padding: 4px 6px 12px; }
+.chip{
+  background: var(--gray-soft); border:1px solid var(--border); border-radius:980px;
+  padding: 7px 13px; font-size:12.3px; font-weight:600; color: var(--text); cursor:pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.chip:hover{ background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.chat-input-row{ display:flex; gap:10px; padding: 4px 6px 0; }
+.chat-input-row input{ flex:1; border-radius: 980px; padding: 11px 16px; }
+.chat-input-row .btn{ flex-shrink:0; }
+.chat-disclaimer{ text-align:center; font-size:11px; color: var(--text-tertiary); padding: 10px 6px 0; }
+
+@media (max-width: 880px){
+  .chat-panel{ height: calc(100vh - 190px); }
+}
+
+/* ============================================
+   Toasts
+   ============================================ */
+.toast-container{ position:fixed; bottom:22px; right:22px; display:flex; flex-direction:column; gap:10px; z-index:200; }
+.toast{
+  background: #1d1d1f; color:#fff; padding: 12px 18px; border-radius: 12px;
+  font-size:13.4px; font-weight:500; box-shadow: var(--shadow-lg);
+  display:flex; align-items:center; gap:10px;
+  animation: toastIn .2s ease;
+}
+.toast svg{ width:16px; height:16px; stroke: #4ce07f; flex-shrink:0; }
+@keyframes toastIn{ from{ opacity:0; transform: translateY(10px);} to{opacity:1; transform:none;} }
+.toast.leaving{ animation: toastOut .2s ease forwards; }
+@keyframes toastOut{ to{ opacity:0; transform: translateY(6px);} }
+
+/* ============================================
+   Mobile nav
+   ============================================ */
+.mobile-nav-toggle{
+  display:none; position:fixed; top:14px; left:14px; z-index:60;
+  width:40px; height:40px; border-radius:10px; border:1px solid var(--border);
+  background: var(--surface); box-shadow: var(--shadow-sm); align-items:center; justify-content:center; cursor:pointer;
+}
+.mobile-nav-toggle svg{ width:19px; height:19px; stroke: var(--text); }
+.sidebar-scrim{ display:none; position:fixed; inset:0; background: rgba(0,0,0,0.35); z-index:45; }
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 1100px){
+  .cards-grid{ grid-template-columns: repeat(2, 1fr); }
+  .two-col{ grid-template-columns: 1fr; }
+  .quick-actions{ grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 880px){
+  .sidebar{
+    position:fixed; z-index:50; left:0; top:0;
+    transform: translateX(-100%); transition: transform .22s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open{ transform: translateX(0); }
+  .sidebar-scrim.active{ display:block; }
+  .mobile-nav-toggle{ display:flex; }
+  .topbar{ padding: 18px 20px 18px 64px; }
+  .content{ padding: 8px 18px 40px; }
+  .search-box{ width: 170px; }
+  .form-grid{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px){
+  .cards-grid{ grid-template-columns: 1fr 1fr; }
+  .quick-actions{ grid-template-columns: 1fr; }
+  .page-title{ font-size:20px; }
+  .search-box{ display:none; }
+  .notes-grid{ grid-template-columns: 1fr 1fr; }
+  .panel{ padding:16px; }
+}
+
+@media (max-width: 420px){
+  .cards-grid{ grid-template-columns: 1fr; }
+  .notes-grid{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px){
+  .calendar-grid{ gap:3px; }
+  .cal-cell{ min-height:64px; padding:4px; border-radius:7px; }
+  .cal-date-num{ font-size:11px; }
+  .cal-event-chip{ font-size:9px; padding:1px 3px; }
+  #calendarWeekdays div{ font-size:9.5px; padding:4px 0; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+
+
+/* ============================================================
+   Visual refresh — inspired by supplied Orders dashboard reference
+   Keeps existing Business HQ structure/functionality; styling only.
+   ============================================================ */
+:root{
+  --bg: #f2eefb;
+  --surface: #ffffff;
+  --surface-2: #fbfbfe;
+  --border: #e6e4ec;
+  --border-soft: #eeedf3;
+  --text: #17171a;
+  --text-secondary: #676773;
+  --text-tertiary: #8b8b96;
+  --accent: #3155e7;
+  --accent-hover: #2849d0;
+  --accent-soft: #eef2ff;
+  --green: #12966f;
+  --green-soft: #e8f8f2;
+  --orange: #d9791b;
+  --orange-soft: #fff3e5;
+  --red: #d84a58;
+  --red-soft: #ffedf0;
+  --purple: #7257d9;
+  --purple-soft: #f0ecff;
+  --gray-soft: #f3f3f7;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(23,23,26,.035);
+  --shadow-md: 0 8px 24px rgba(55,42,100,.07);
+  --shadow-lg: 0 24px 60px rgba(55,42,100,.18);
+  --sidebar-w: 68px;
+}
+
+html{background:var(--bg);}
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.app{
+  width:min(1180px, calc(100vw - 44px));
+  min-height:calc(100vh - 44px);
+  margin:22px auto;
+  background:var(--surface);
+  border:1px solid rgba(255,255,255,.92);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 20px 55px rgba(53,38,88,.18), 0 0 0 1px rgba(102,78,154,.08);
+}
+
+.sidebar{
+  width:var(--sidebar-w);
+  padding:14px 8px;
+  background:#fff;
+  border-right:1px solid #ecebf0;
+  position:relative;
+  height:auto;
+  min-height:100%;
+}
+.sidebar-brand{
+  justify-content:center;
+  padding:7px 0 20px;
+}
+.brand-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:#3e52e8;
+  font-size:11px;
+  box-shadow:0 3px 8px rgba(62,82,232,.18);
+}
+.brand-name{display:none;}
+.nav{gap:6px;overflow:visible;}
+.nav-item{
+  width:48px;height:42px;margin:0 auto;padding:0;
+  justify-content:center;gap:0;
+  border-radius:9px;
+  color:#777783;
+  font-size:0;
+}
+.nav-item svg{width:19px;height:19px;}
+.nav-item span{display:none;}
+.nav-item:hover{background:#f4f4f8;color:#2f3037;}
+.nav-item.active{
+  background:#eef2ff;
+  color:#3155e7;
+  box-shadow:inset 0 0 0 1px rgba(49,85,231,.03);
+}
+.sidebar-footer{
+  gap:8px;
+  padding-top:12px;
+  margin-top:12px;
+}
+.sidebar-footer .nav-item{margin-bottom:2px;}
+.owner-card{
+  justify-content:center;
+  padding:5px 0;
+}
+.owner-card > div:last-child{display:none;}
+.avatar{width:34px;height:34px;font-size:11px;}
+
+.main{background:#fff;}
+.topbar{
+  min-height:60px;
+  padding:0 22px;
+  background:#fff;
+  border-bottom:1px solid #ecebf0;
+  position:sticky;
+  top:0;
+  z-index:20;
+  backdrop-filter:none;
+}
+.page-title{font-size:14px;font-weight:600;letter-spacing:-.01em;}
+.topbar-actions{gap:12px;}
+.search-box{
+  width:240px;
+  height:36px;
+  padding:7px 11px;
+  border:1px solid #e2e1e8;
+  border-radius:8px;
+  box-shadow:none;
+}
+.search-box:focus-within{border-color:#b9c5ff;box-shadow:0 0 0 3px rgba(49,85,231,.08);}
+.search-box input{font-size:13px;}
+.search-box-small{width:190px;}
+.icon-btn{width:36px;height:36px;border-color:#e2e1e8;box-shadow:none;}
+.icon-btn:hover{background:#f7f7fa;}
+
+.content{padding:26px 22px 34px;background:#fafafd;}
+.view.active{animation:fadeIn .16s ease;}
+
+.cards-grid{gap:12px;margin-bottom:14px;}
+.stat-card{
+  border:1px solid #e8e7ed;
+  border-radius:10px;
+  padding:15px 16px;
+  box-shadow:0 1px 2px rgba(20,20,30,.025);
+}
+.stat-card .stat-label{font-size:11px;color:#777783;}
+.stat-card .stat-value{font-size:21px;margin-top:4px;}
+.stat-card .stat-delta{font-size:11px;margin-top:4px;}
+
+.panel{
+  border:1px solid #e8e7ed;
+  border-radius:11px;
+  padding:16px 17px;
+  box-shadow:0 1px 2px rgba(20,20,30,.025);
+  margin-bottom:12px;
+}
+.panel-head{margin-bottom:12px;}
+.panel-head h2{font-size:14px;}
+
+.btn{border-radius:7px;padding:8px 13px;font-size:12px;}
+.btn-primary{background:#3155e7;}
+.btn-secondary{background:#fff;border-color:#e0dfe7;}
+.quick-actions{gap:9px;}
+.quick-action{border-radius:8px;padding:11px 12px;font-size:12px;background:#fff;}
+
+.data-table th{
+  background:#fafafd;
+  color:#777783;
+  font-size:10px;
+  padding:9px 10px;
+  border-bottom:1px solid #e5e4ea;
+}
+.data-table td{padding:11px 10px;font-size:12px;}
+.data-table tr:hover td{background:#fbfbfd;}
+
+.item-card{border-radius:9px;padding:12px 13px;background:#fff;border-color:#e8e7ed;}
+.item-card-title{font-size:13px;}
+.item-card-desc{font-size:11.5px;}
+
+.badge{padding:4px 9px;font-size:10.5px;}
+
+/* Make form controls visually match the new compact dashboard */
+input,select,textarea{
+  border-color:#e1e0e7;
+  border-radius:8px;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:#b9c5ff;
+  box-shadow:0 0 0 3px rgba(49,85,231,.08);
+}
+
+/* Modals */
+.modal-backdrop{backdrop-filter:blur(5px);background:rgba(30,27,38,.34)!important;}
+.modal{border-radius:13px!important;box-shadow:0 22px 60px rgba(30,25,50,.20)!important;border:1px solid #e7e5ec!important;}
+
+/* Mobile: preserve the reference's clean compact feel */
+@media (max-width:880px){
+  .app{width:calc(100vw - 24px);min-height:calc(100vh - 24px);margin:12px auto;border-radius:12px;}
+  .sidebar{width:var(--sidebar-w);}
+  .content{padding:20px 16px 28px;}
+  .topbar{padding:0 16px;}
+}
+
+@media (max-width:620px){
+  body{background:#f7f5fb;}
+  .app{width:100%;min-height:100vh;margin:0;border-radius:0;box-shadow:none;border:none;}
+  .sidebar{width:68px;}
+  .topbar{min-height:58px;padding:0 12px;}
+  .page-title{font-size:13px;}
+  .search-box{width:min(190px,42vw);}
+  .content{padding:16px 12px 24px;}
+}
+
+/* Notifications */
+.notification-wrap{position:relative;}
+.notification-count{position:absolute;top:2px;right:1px;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:#3155e7;color:#fff;font-size:9px;font-weight:700;line-height:15px;text-align:center;border:2px solid #fff;display:none;}
+.notification-count.visible{display:block;}
+.notification-panel{position:absolute;top:calc(100% + 10px);right:0;width:360px;background:#fff;border:1px solid #e6e4eb;border-radius:12px;box-shadow:0 18px 45px rgba(25,20,40,.16);overflow:hidden;z-index:100;display:none;}
+.notification-panel.open{display:block;animation:fadeIn .14s ease;}
+.notification-head{display:flex;align-items:center;justify-content:space-between;padding:14px 15px;border-bottom:1px solid #ecebf0;}
+.notification-head strong{font-size:13px;}
+.notification-read-all{border:0;background:none;color:#3155e7;font-size:11px;font-weight:600;cursor:pointer;padding:4px;}
+.notification-read-all:hover{text-decoration:underline;}
+.notification-list{max-height:390px;overflow:auto;}
+.notification-item{display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid #f0eff3;cursor:pointer;transition:background .12s ease;position:relative;}
+.notification-item:hover{background:#fafafd;}
+.notification-item.unread{background:#fbfbff;}
+.notification-item:last-child{border-bottom:0;}
+.notification-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 32px;background:#eef2ff;color:#3155e7;}
+.notification-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;}
+.notification-content{min-width:0;flex:1;}
+.notification-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.notification-title{font-size:11.5px;font-weight:600;color:#26262c;}
+.notification-time{font-size:9.5px;color:#8a8992;white-space:nowrap;}
+.notification-text{font-size:10.5px;line-height:1.45;color:#777783;margin-top:3px;}
+.notification-unread-dot{width:6px;height:6px;border-radius:50%;background:#3155e7;position:absolute;right:14px;bottom:15px;}
+.notification-empty{padding:28px 18px;text-align:center;color:#888791;font-size:11px;}
+@media (max-width:620px){
+  .notification-panel{position:fixed;top:68px;right:10px;left:10px;width:auto;max-height:calc(100vh - 80px);}
+}
+
+/* ============================================================
+   Accessibility + responsive navigation polish
+   ============================================================ */
+
+/* Custom tooltip for the compact icon sidebar.
+   The native title attribute remains as an accessibility/fallback aid. */
+@media (min-width: 881px){
+  .sidebar .nav-item{
+    position:relative;
+  }
+
+  .sidebar .nav-item::after{
+    content:attr(title);
+    position:absolute;
+    left:calc(100% + 10px);
+    top:50%;
+    transform:translateY(-50%) translateX(-4px);
+    background:#1d1d22;
+    color:#fff;
+    padding:6px 9px;
+    border-radius:7px;
+    font-size:11px;
+    font-weight:500;
+    line-height:1;
+    white-space:nowrap;
+    pointer-events:none;
+    opacity:0;
+    visibility:hidden;
+    z-index:300;
+    box-shadow:0 7px 18px rgba(20,20,30,.16);
+    transition:opacity .14s ease, transform .14s ease, visibility .14s ease;
+  }
+
+  .sidebar .nav-item:hover::after,
+  .sidebar .nav-item:focus-visible::after{
+    opacity:1;
+    visibility:visible;
+    transform:translateY(-50%) translateX(0);
+  }
+}
+
+/* Tablet/mobile: turn the sidebar into a proper slide-out navigation.
+   Labels are visible when the menu is open, so it is usable without hover. */
+@media (max-width:880px){
+  .sidebar{
+    width:230px !important;
+    padding:14px 12px !important;
+    padding-top:68px !important;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .sidebar-brand{
+    justify-content:flex-start !important;
+    padding:7px 8px 20px !important;
+  }
+
+  .brand-name{
+    display:block !important;
+  }
+
+  .nav-item{
+    width:100% !important;
+    height:42px !important;
+    padding:0 12px !important;
+    justify-content:flex-start !important;
+    gap:11px !important;
+    font-size:12px !important;
+  }
+
+  .nav-item span{
+    display:block !important;
+  }
+
+  .owner-card{
+    justify-content:flex-start !important;
+    padding:5px 8px !important;
+    gap:9px;
+  }
+
+  .owner-card > div:last-child{
+    display:block !important;
+  }
+
+  .mobile-nav-toggle{
+    top:14px !important;
+    left:14px !important;
+    z-index:70 !important;
+  }
+
+  .topbar{
+    padding-left:68px !important;
+  }
+
+  .sidebar-scrim{
+    z-index:55;
+  }
+}
+
+/* Better small-screen header/search behavior. */
+@media (max-width:620px){
+  .topbar{
+    min-height:60px !important;
+    padding:10px 12px 10px 64px !important;
+    gap:8px;
+  }
+
+  .page-title{
+    flex:1;
+    min-width:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .topbar-actions{
+    flex-shrink:0;
+    gap:7px !important;
+  }
+
+  .search-box{
+    display:flex !important;
+    width:min(175px, 42vw) !important;
+    height:36px !important;
+  }
+
+  .search-box input{
+    min-width:0;
+    width:100%;
+  }
+
+  .icon-btn{
+    flex-shrink:0;
+  }
+
+  .content{
+    padding:14px 10px 24px !important;
+  }
+
+  .panel{
+    overflow-x:auto;
+  }
+
+  .data-table{
+    min-width:650px;
+  }
+}
+
+@media (max-width:420px){
+  .topbar{
+    padding-left:60px !important;
+  }
+
+  .search-box{
+    width:36px !important;
+    height:32px !important;
+    padding:0 9px !important;
+    cursor:text;
+  }
+
+  .search-box input{
+    display:none;
+  }
+
+  .search-box:focus-within,
+  .search-box:has(input:focus){
+    width:145px !important;
+  }
+
+  .search-box:focus-within input,
+  .search-box:has(input:focus) input{
+    display:block;
+  }
+}
+
+/* Prevent the slide-out sidebar from being visually trapped behind the
+   mobile toggle or app shell. */
+@media (max-width:880px){
+  .app{
+    overflow:visible;
+  }
+
+  .sidebar{
+    box-shadow:0 18px 50px rgba(25,20,40,.22);
+  }
+}
+
+
+/* =========================================================
+   FINAL SEARCH UI FIX
+   Prevent nested/broken borders and header overlap.
+   ========================================================= */
+.topbar{
+  min-width:0;
+}
+
+.topbar-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex-shrink:0;
+}
+
+.topbar-actions .search-box{
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:240px;
+  height:36px;
+  min-width:0;
+  flex:0 1 240px;
+  padding:0 12px;
+  background:#f4f4f5;
+  border:0 !important;
+  border-radius:999px;
+  box-shadow:none !important;
+  overflow:hidden;
+}
+
+.topbar-actions .search-box input{
+  box-sizing:border-box;
+  flex:1 1 auto;
+  width:100%;
+  min-width:0;
+  height:100%;
+  margin:0;
+  padding:0;
+  border:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  font-size:13px;
+}
+
+.topbar-actions .search-box svg{
+  width:14px;
+  height:14px;
+  flex:0 0 14px;
+  margin:0;
+}
+
+@media (max-width:880px){
+  .topbar-actions .search-box{
+    width:190px;
+    flex-basis:190px;
+  }
+}
+
+@media (max-width:620px){
+  .topbar{
+    padding-right:12px;
+  }
+  .topbar-actions{
+    gap:7px;
+  }
+  .topbar-actions .search-box{
+    width:150px;
+    flex-basis:150px;
+  }
+}
+
+@media (max-width:420px){
+  .topbar-actions .search-box{
+    width:36px !important;
+    flex-basis:36px !important;
+    height:32px;
+    padding:0 9px;
+  }
+
+  .topbar-actions .search-box input{
+    display:none;
+  }
+
+  .topbar-actions .search-box:focus-within{
+    width:145px !important;
+    flex-basis:145px !important;
+  }
+
+  .topbar-actions .search-box:focus-within input{
+    display:block;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">HQ</div>
+      <span class="brand-name">Business HQ</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-section="dashboard" title="Dashboard" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-section="chat-ai" title="Chat with AI" aria-label="Chat with AI">
+        <svg viewBox="0 0 24 24"><path d="M4 5.5h16A1.5 1.5 0 0 1 21.5 7v9A1.5 1.5 0 0 1 20 17.5h-9L6 21v-3.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5Z" fill="none" stroke-width="1.6"/><circle cx="8" cy="11" r="1" /><circle cx="12" cy="11" r="1"/><circle cx="16" cy="11" r="1"/></svg>
+        <span>Chat with AI</span>
+      </button>
+      <button class="nav-item" data-section="calendar" title="Calendar" aria-label="Calendar">
+        <svg viewBox="0 0 24 24"><path d="M7 2v2M17 2v2M3.5 8.5h17M4 4.5h16A1.5 1.5 0 0 1 21.5 6v14A1.5 1.5 0 0 1 20 21.5H4A1.5 1.5 0 0 1 2.5 20V6A1.5 1.5 0 0 1 4 4.5Z" fill="none" stroke-width="1.6"/></svg>
+        <span>Calendar</span>
+      </button>
+      <button class="nav-item" data-section="video-ideas" title="Video Ideas" aria-label="Video Ideas">
+        <svg viewBox="0 0 24 24"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h9A1.5 1.5 0 0 1 16 6.5v11A1.5 1.5 0 0 1 14.5 19h-9A1.5 1.5 0 0 1 4 17.5v-11Z" fill="none" stroke-width="1.6"/><path d="m16 10 4.2-2.4a.6.6 0 0 1 .9.52v7.76a.6.6 0 0 1-.9.52L16 14" fill="none" stroke-width="1.6"/></svg>
+        <span>Video Ideas</span>
+      </button>
+      <button class="nav-item" data-section="pre-orders" title="Pre-Orders" aria-label="Pre-Orders">
+        <svg viewBox="0 0 24 24"><path d="M3 7h18M3 7l1.4 11.2A2 2 0 0 0 6.4 20h11.2a2 2 0 0 0 2-1.8L21 7M8 7V5a4 4 0 0 1 8 0v2" fill="none" stroke-width="1.6"/></svg>
+        <span>Pre-Orders</span>
+      </button>
+      <button class="nav-item" data-section="customer-updates" title="Customer Updates" aria-label="Customer Updates">
+        <svg viewBox="0 0 24 24"><path d="M4 5.5h16A1.5 1.5 0 0 1 21.5 7v10A1.5 1.5 0 0 1 20 18.5H4A1.5 1.5 0 0 1 2.5 17V7A1.5 1.5 0 0 1 4 5.5Z" fill="none" stroke-width="1.6"/><path d="m3 7 9 6 9-6" fill="none" stroke-width="1.6"/></svg>
+        <span>Customer Updates</span>
+      </button>
+      <button class="nav-item" data-section="sales" title="Sales" aria-label="Sales">
+        <svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2" fill="none" stroke-width="1.6"/></svg>
+        <span>Sales</span>
+      </button>
+      <button class="nav-item" data-section="notes" title="Notes" aria-label="Notes">
+        <svg viewBox="0 0 24 24"><path d="M6 3.5h12A1.5 1.5 0 0 1 19.5 5v14A1.5 1.5 0 0 1 18 20.5H6A1.5 1.5 0 0 1 4.5 19V5A1.5 1.5 0 0 1 6 3.5Z" fill="none" stroke-width="1.6"/><path d="M8 8h8M8 12h8M8 16h5" stroke-width="1.6"/></svg>
+        <span>Notes</span>
+      </button>
+      <button class="nav-item" data-section="important-emails" title="Important Emails" aria-label="Important Emails">
+        <svg viewBox="0 0 24 24"><path d="M3.5 6.5h17v11a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-11Z" fill="none" stroke-width="1.6"/><path d="m4 7 8 6.5L20 7" fill="none" stroke-width="1.6"/></svg>
+        <span>Important Emails</span>
+      </button>
+      <button class="nav-item" data-section="bulk-orders" title="Bulk Orders" aria-label="Bulk Orders">
+        <svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5-9 4.5-9-4.5Z" fill="none" stroke-width="1.6"/><path d="M3 8.5V16l9 4.5 9-4.5V8.5" fill="none" stroke-width="1.6"/></svg>
+        <span>Bulk Orders</span>
+      </button>
+      <button class="nav-item" data-section="cost-profit" title="Cost & Profit" aria-label="Cost & Profit">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke-width="1.6"/><path d="M12 7.5v9M14.8 9.8c0-1.1-1.25-2-2.8-2s-2.8.9-2.8 2c0 1.1 1.25 1.6 2.8 1.9 1.55.3 2.8.9 2.8 2 0 1.1-1.25 2-2.8 2s-2.8-.9-2.8-2" fill="none" stroke-width="1.6"/></svg>
+        <span>Cost & Profit</span>
+      </button>
+      <button class="nav-item" data-section="samples" title="Samples" aria-label="Samples">
+        <svg viewBox="0 0 24 24"><path d="M9 3h6l1 5-4 12-4-12 1-5Z" fill="none" stroke-width="1.6"/><path d="M8 8h8" stroke-width="1.6"/></svg>
+        <span>Samples</span>
+      </button>
+      <button class="nav-item" data-section="tracking" title="Tracking" aria-label="Tracking">
+        <svg viewBox="0 0 24 24"><path d="M3 16.5V6.5A1.5 1.5 0 0 1 4.5 5H13a1.5 1.5 0 0 1 1.5 1.5v10M3 16.5A1.5 1.5 0 0 0 4.5 18h1M3 16.5h11.5M14.5 8h3.2a1 1 0 0 1 .85.47l2.1 3.36a1 1 0 0 1 .15.53V16a1 1 0 0 1-1 1h-.8" fill="none" stroke-width="1.6"/><circle cx="7.5" cy="18" r="1.7" fill="none" stroke-width="1.6"/><circle cx="17.5" cy="18" r="1.7" fill="none" stroke-width="1.6"/></svg>
+        <span>Tracking</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="nav-item" data-section="settings" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke-width="1.6"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10a1.7 1.7 0 0 0 1-1.55V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10a1.7 1.7 0 0 0 1.55 1h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" fill="none" stroke-width="1.3"/></svg>
+        <span>Settings</span>
+      </button>
+      <div class="owner-card">
+        <div class="avatar">MA</div>
+        <div>
+          <div class="owner-name">Maya Alden</div>
+          <div class="owner-role">Owner</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-width="1.8"/></svg>
+  </button>
+  <div class="sidebar-scrim" id="sidebarScrim"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-actions">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke-width="1.6"/></svg>
+          <input type="text" id="globalSearch" placeholder="Search…">
+        </div>
+        <div class="notification-wrap">
+          <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications" aria-expanded="false" aria-controls="notificationPanel">
+            <svg viewBox="0 0 24 24"><path d="M12 3.5c-3 0-5 2.2-5 5.4v3.1c0 .7-.25 1.4-.7 1.94L5 15.7c-.6.72-.1 1.8.83 1.8h12.34c.93 0 1.43-1.08.83-1.8l-1.3-1.76a3.1 3.1 0 0 1-.7-1.94V8.9c0-3.2-2-5.4-5-5.4Z" fill="none" stroke-width="1.6"/><path d="M9.5 19.5a2.5 2.5 0 0 0 5 0" fill="none" stroke-width="1.6"/></svg>
+            <span class="notification-count" id="notificationCount"></span>
+          </button>
+          <div class="notification-panel" id="notificationPanel" role="dialog" aria-label="Notifications">
+            <div class="notification-head">
+              <strong>Notifications</strong>
+              <button type="button" class="notification-read-all" id="markAllNotificationsRead">Mark all as read</button>
+            </div>
+            <div class="notification-list" id="notificationList"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="view active" id="view-dashboard">
+        <div class="cards-grid" id="summaryCards"></div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Upcoming</h2>
+              <button class="link-btn" data-goto="calendar">View calendar</button>
+            </div>
+            <ul class="upcoming-list" id="upcomingList"></ul>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Recent activity</h2></div>
+            <ul class="activity-list" id="activityList"></ul>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Quick actions</h2></div>
+          <div class="quick-actions" id="quickActions">
+            <button class="quick-action" data-modal="event">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Calendar Event
+            </button>
+            <button class="quick-action" data-modal="preorder">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Pre-Order Update
+            </button>
+            <button class="quick-action" data-modal="note">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Note
+            </button>
+            <button class="quick-action" data-modal="bulkorder">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Bulk Order
+            </button>
+            <button class="quick-action" data-modal="sample">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Sample
+            </button>
+            <button class="quick-action" data-modal="tracking">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8"/></svg>
+              Add Tracking Number
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CHAT WITH AI ===== -->
+      <section class="view" id="view-chat-ai">
+        <div class="panel chat-panel">
+          <div class="chat-window" id="chatWindow"></div>
+          <div class="chat-suggestions" id="chatSuggestions">
+            <button class="chip" data-cmd="Fabric has arrived in production for Striped Long Sleeve">Fabric arrived — Striped Long Sleeve</button>
+            <button class="chip" data-cmd="Schedule a meeting for September 5">Schedule a meeting Sept 5</button>
+            <button class="chip" data-cmd="What's on my calendar this week?">What's on my calendar?</button>
+            <button class="chip" data-cmd="What stage is Ribbed Tank in?">Status of Ribbed Tank</button>
+            <button class="chip" data-cmd="Remind me to reorder poly mailers">Add a reminder</button>
+          </div>
+          <form class="chat-input-row" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Message your AI — e.g. &quot;Fabric arrived, schedule washing for Sept 5&quot;" autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="chatSend">Send</button>
+          </form>
+          <p class="chat-disclaimer">Prototype only — the AI's responses are simulated for this demo and will connect to real actions later.</p>
+        </div>
+      </section>
+
+      <!-- ===== CALENDAR ===== -->
+      <section class="view" id="view-calendar">
+        <div class="panel">
+          <div class="calendar-header">
+            <div class="calendar-nav">
+              <button class="icon-btn" id="prevMonth">‹</button>
+              <h2 id="calendarMonthLabel">Month Year</h2>
+              <button class="icon-btn" id="nextMonth">›</button>
+            </div>
+            <button class="btn btn-primary" data-modal="event">+ Add Event</button>
+          </div>
+          <div class="calendar-grid" id="calendarWeekdays"></div>
+          <div class="calendar-grid calendar-dates" id="calendarDates"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Upcoming events</h2></div>
+          <ul class="upcoming-list" id="calendarUpcomingList"></ul>
+        </div>
+      </section>
+
+      <!-- ===== VIDEO IDEAS ===== -->
+      <section class="view" id="view-video-ideas">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Video ideas</h2>
+            <button class="btn btn-primary" data-modal="videoidea">+ Add New Idea</button>
+          </div>
+          <div class="card-list" id="videoIdeasList"></div>
+        </div>
+      </section>
+
+      <!-- ===== PRE-ORDERS ===== -->
+      <section class="view" id="view-pre-orders">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Pre-orders</h2>
+            <button class="btn btn-primary" data-modal="preorder">+ Add Pre-Order</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="preOrdersTable">
+              <thead>
+                <tr><th>Product</th><th>Orders</th><th>Status</th><th>Expected arrival</th><th>Shipping date</th><th>Progress</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CUSTOMER UPDATES ===== -->
+      <section class="view" id="view-customer-updates">
+        <div class="panel">
+          <div class="panel-head"><h2>Send a customer update</h2></div>
+          <form class="form-grid" id="customerUpdateForm">
+            <label class="field">
+              <span>Related product / pre-order</span>
+              <select id="cuProduct"></select>
+            </label>
+            <label class="field">
+              <span>Email subject</span>
+              <input type="text" id="cuSubject" placeholder="e.g. Your striped long sleeve is on its way">
+            </label>
+            <label class="field field-wide">
+              <span>Email content</span>
+              <textarea id="cuContent" rows="6" placeholder="Write the update your customers will receive…"></textarea>
+            </label>
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="cuSendTest">Send Test</button>
+              <button type="button" class="btn btn-secondary" id="cuSchedule">Schedule</button>
+              <button type="button" class="btn btn-primary" id="cuSendNow">Send Now</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Sent & scheduled updates</h2></div>
+          <div class="card-list" id="customerUpdatesList"></div>
+        </div>
+      </section>
+
+      <!-- ===== SALES ===== -->
+      <section class="view" id="view-sales">
+        <div class="cards-grid" id="salesCards"></div>
+        <div class="panel">
+          <div class="panel-head"><h2>Sales — last 7 days</h2></div>
+          <div class="bar-chart" id="salesChart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Recent orders</h2></div>
+          <div class="table-wrap">
+            <table class="data-table" id="recentOrdersTable">
+              <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Date</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== NOTES ===== -->
+      <section class="view" id="view-notes">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Notes</h2>
+            <div class="panel-head-actions">
+              <div class="search-box search-box-small">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke-width="1.6"/></svg>
+                <input type="text" id="notesSearch" placeholder="Search notes…">
+              </div>
+              <button class="btn btn-primary" data-modal="note">+ Add Note</button>
+            </div>
+          </div>
+          <div class="notes-grid" id="notesGrid"></div>
+        </div>
+      </section>
+
+      <!-- ===== IMPORTANT EMAILS ===== -->
+      <section class="view" id="view-important-emails">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Important emails</h2>
+            <div class="panel-head-actions">
+              <div class="search-box search-box-small">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke-width="1.6"/><path d="m20 20-3.5-3.5" stroke-width="1.6"/></svg>
+                <input type="text" id="emailsSearch" placeholder="Search emails…">
+              </div>
+              <select id="emailsFilter">
+                <option value="all">All statuses</option>
+                <option value="unread">Unread</option>
+                <option value="read">Read</option>
+                <option value="flagged">Flagged</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="emailsTable">
+              <thead><tr><th>Sender</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== BULK ORDERS ===== -->
+      <section class="view" id="view-bulk-orders">
+        <div class="cards-grid" id="bulkOrderCards"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Bulk orders</h2>
+            <button class="btn btn-primary" data-modal="bulkorder">+ Add Bulk Order</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="bulkOrdersTable">
+              <thead><tr><th>Supplier</th><th>Product</th><th>Quantity</th><th>Cost</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== COST & PROFIT ===== -->
+      <section class="view" id="view-cost-profit">
+        <div class="cards-grid" id="costProfitCards"></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Cost breakdown</h2></div>
+            <ul class="breakdown-list" id="costBreakdown"></ul>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Profit — last 6 months</h2></div>
+            <div class="bar-chart" id="profitChart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SAMPLES ===== -->
+      <section class="view" id="view-samples">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Samples</h2>
+            <button class="btn btn-primary" data-modal="sample">+ Add Sample</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="samplesTable">
+              <thead><tr><th>Sample</th><th>Product</th><th>Supplier</th><th>Status</th><th>Submitted</th><th>Expected</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TRACKING ===== -->
+      <section class="view" id="view-tracking">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Shipment tracking</h2>
+            <button class="btn btn-primary" data-modal="tracking">+ Add Tracking Number</button>
+          </div>
+          <div class="card-list" id="trackingList"></div>
+        </div>
+      </section>
+
+      <!-- ===== SETTINGS ===== -->
+      <section class="view" id="view-settings">
+        <div class="panel">
+          <div class="panel-head"><h2>Business profile</h2></div>
+          <form class="form-grid">
+            <label class="field"><span>Business name</span><input type="text" value="Alden & Co."></label>
+            <label class="field"><span>Owner name</span><input type="text" value="Maya Alden"></label>
+            <label class="field"><span>Contact email</span><input type="email" value="maya@aldenandco.com"></label>
+            <label class="field"><span>Time zone</span>
+              <select><option>Eastern Time (US)</option><option>Central Time (US)</option><option>Pacific Time (US)</option></select>
+            </label>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Notifications</h2></div>
+          <div class="toggle-row"><span>Email me when a bulk order arrives</span><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>Text me tracking updates</span><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>Weekly sales summary</span><label class="switch"><input type="checkbox"><span class="slider"></span></label></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Connected integrations</h2></div>
+          <div class="integration-row">
+            <div><strong>Calendar sync</strong><p>Connect your calendar to schedule events automatically.</p></div>
+            <span class="badge badge-neutral">Not connected</span>
+          </div>
+          <div class="integration-row">
+            <div><strong>AI assistant</strong><p>Manage your business with simple messages.</p></div>
+            <span class="badge badge-neutral">Coming soon</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Modal root -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">Add item</h3>
+      <button class="icon-btn" id="modalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke-width="1.8"/></svg>
+      </button>
+    </div>
+    <form id="modalForm" class="form-grid modal-form-grid"></form>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button type="submit" form="modalForm" class="btn btn-primary" id="modalSubmit">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ============================================================
+   State
+   ============================================================ */
+const STORAGE_KEY = 'hqDashboardState_v1';
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function isoDate(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function todayISO(){ const t=new Date(); return isoDate(t.getFullYear(), t.getMonth(), t.getDate()); }
+function addDays(iso, days){ const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+days); return isoDate(d.getFullYear(), d.getMonth(), d.getDate()); }
+function fmtDate(iso){ const d = new Date(iso+'T00:00:00'); return `${MONTH_NAMES[d.getMonth()].slice(0,3)} ${d.getDate()}`; }
+function fmtDateFull(iso){ const d = new Date(iso+'T00:00:00'); return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+function seedState(){
+  const today = todayISO();
+  return {
+    events: [
+      { id: uid('ev'), title: 'Supplier call — fabric batch #12', date: addDays(today,1), time:'10:00 AM', type:'meeting', notes:'Discuss dye lot consistency.' },
+      { id: uid('ev'), title: 'Washing step — Batch A', date: addDays(today,3), time:'', type:'production', notes:'' },
+      { id: uid('ev'), title: 'Pre-order shipping deadline', date: addDays(today,5), time:'', type:'deadline', notes:'Striped long sleeves must ship by EOD.' },
+      { id: uid('ev'), title: 'QC review — Batch B', date: addDays(today,8), time:'2:00 PM', type:'production', notes:'' },
+      { id: uid('ev'), title: 'Photoshoot for fall collection', date: addDays(today,-2), time:'', type:'meeting', notes:'' },
+    ],
+    videoIdeas: [
+      { id: uid('vi'), title:'Restock day vlog', description:'Behind the scenes unboxing new bulk order.', status:'Idea', priority:'Medium', created: addDays(today,-3) },
+      { id: uid('vi'), title:'How pre-orders work', description:'Explain the pre-order timeline to new customers.', status:'Planning', priority:'High', created: addDays(today,-6) },
+      { id: uid('vi'), title:'Packing ASMR', description:'Quiet packing video for the striped long sleeve drop.', status:'In Progress', priority:'Low', created: addDays(today,-10) },
+    ],
+    preOrders: [
+      { id: uid('po'), product:'Striped Long Sleeve', orders:142, status:'In Production', expected: addDays(today,4), shipping: addDays(today,9), progress:60 },
+      { id: uid('po'), product:'Ribbed Tank — Sage', orders:88, status:'Washing', expected: addDays(today,2), shipping: addDays(today,6), progress:75 },
+      { id: uid('po'), product:'Cropped Hoodie', orders:210, status:'Sourced', expected: addDays(today,12), shipping: addDays(today,18), progress:20 },
+      { id: uid('po'), product:'Linen Shorts — Sand', orders:64, status:'Shipped', expected: addDays(today,-3), shipping: addDays(today,-1), progress:100 },
+    ],
+    customerUpdates: [
+      { id: uid('cu'), product:'Striped Long Sleeve', subject:'Your striped long sleeve is in production', content:'Quick update — your item is currently in production and on track.', state:'Sent', date: addDays(today,-2) },
+      { id: uid('cu'), product:'Ribbed Tank — Sage', subject:'Ribbed tank moving to washing', content:'Good news — your tank has finished production and is headed to washing.', state:'Scheduled', date: addDays(today,2) },
+    ],
+    notes: [
+      { id: uid('nt'), text:'Ask supplier about faster dye turnaround for winter drop.', pinned:true, date: addDays(today,-1) },
+      { id: uid('nt'), text:'Reorder poly mailers — running low (under 200 left).', pinned:false, date: addDays(today,-4) },
+      { id: uid('nt'), text:'Customer feedback: size run for hoodie could use a 2XL.', pinned:false, date: addDays(today,-8) },
+    ],
+    emails: [
+      { id: uid('em'), sender:'Fabric House Co.', subject:'Invoice #3391 — dye lot approved', date: addDays(today,-1), status:'unread' },
+      { id: uid('em'), sender:'ShipFast Logistics', subject:'Delay notice: carrier capacity this week', date: addDays(today,-2), status:'flagged' },
+      { id: uid('em'), sender:'Studio Photography', subject:'Fall shoot — proofs ready for review', date: addDays(today,-3), status:'read' },
+      { id: uid('em'), sender:'Wholesale Buyer — Nora K.', subject:'Interested in bulk order for boutique', date: addDays(today,-5), status:'unread' },
+    ],
+    bulkOrders: [
+      { id: uid('bo'), supplier:'Fabric House Co.', product:'Cotton jersey — natural', quantity:600, cost:2400, date: addDays(today,-6), status:'Delivered' },
+      { id: uid('bo'), supplier:'Trimline Supply', product:'Woven labels', quantity:2000, cost:340, date: addDays(today,-10), status:'Delivered' },
+      { id: uid('bo'), supplier:'Fabric House Co.', product:'Ribbed knit — sage', quantity:400, cost:1850, date: addDays(today,-1), status:'Processing' },
+    ],
+    costProfit: {
+      monthlyCost: 8420,
+      estimatedRevenue: 21300,
+      months: [
+        {m:'Mar', profit: 4200}, {m:'Apr', profit: 5100}, {m:'May', profit: 3800},
+        {m:'Jun', profit: 6200}, {m:'Jul', profit: 7100}, {m:'Aug', profit: 6880},
+      ],
+      breakdown: [
+        {label:'Materials', value:4200, max:8420},
+        {label:'Shipping', value:1600, max:8420},
+        {label:'Packaging', value:820, max:8420},
+        {label:'Labor', value:1500, max:8420},
+        {label:'Ads', value:300, max:8420},
+      ]
+    },
+    samples: [
+      { id: uid('sm'), name:'Sample — Ribbed Tank v2', product:'Ribbed Tank', supplier:'Fabric House Co.', status:'In Production', submitted: addDays(today,-9), expected: addDays(today,3) },
+      { id: uid('sm'), name:'Sample — Cropped Hoodie', product:'Cropped Hoodie', supplier:'Trimline Supply', status:'Received', submitted: addDays(today,-15), expected: addDays(today,-2) },
+      { id: uid('sm'), name:'Sample — Linen Shorts v1', product:'Linen Shorts', supplier:'Fabric House Co.', status:'Rejected', submitted: addDays(today,-20), expected: addDays(today,-9) },
+    ],
+    tracking: [
+      { id: uid('tr'), number:'1Z999AA10123456784', carrier:'UPS', product:'Linen Shorts — Sand', status:'Out for Delivery', eta: addDays(today,0) },
+      { id: uid('tr'), number:'9405511899223344556677', carrier:'USPS', product:'Ribbed Tank — Sage (bulk)', status:'In Transit', eta: addDays(today,4) },
+      { id: uid('tr'), number:'782910384756', carrier:'FedEx', product:'Woven labels', status:'Delivered', eta: addDays(today,-6) },
+    ],
+    notifications: [
+      { id: uid('nf'), title:'New calendar event', text:'Supplier call scheduled for tomorrow at 10:00 AM.', time:'2 min ago', section:'calendar', read:false, kind:'calendar' },
+      { id: uid('nf'), title:'Order #32469 delivered', text:'Linen Shorts — Sand has been delivered successfully.', time:'15 min ago', section:'pre-orders', read:false, kind:'order' },
+      { id: uid('nf'), title:'Shipment tracking updated', text:'Your shipment is out for delivery and will arrive today.', time:'1 hr ago', section:'tracking', read:false, kind:'tracking' },
+      { id: uid('nf'), title:'New customer update', text:'A customer update is ready to review.', time:'2 hrs ago', section:'customer-updates', read:false, kind:'customer' },
+      { id: uid('nf'), title:'New important email', text:'Wholesale Buyer — Nora K. sent a new message.', time:'1 day ago', section:'important-emails', read:true, kind:'email' },
+    ],
+    activity: [
+      { text:'Pre-order updated', sub:'Ribbed Tank — Sage moved to Washing', date: addDays(today,0) },
+      { text:'Sample status changed', sub:'Cropped Hoodie sample marked Received', date: addDays(today,-2) },
+      { text:'Customer update created', sub:'Scheduled update for Ribbed Tank — Sage', date: addDays(today,-2) },
+      { text:'Bulk order added', sub:'Ribbed knit — sage, 400 units', date: addDays(today,-1) },
+      { text:'Tracking information updated', sub:'Linen Shorts shipment out for delivery', date: addDays(today,0) },
+    ],
+    salesLast7: [420,610,380,720,860,540,690],
+    salesToday: 690, aov: 58, weekToDate: 4220,
+    calendarViewMonth: new Date().getMonth(),
+    calendarViewYear: new Date().getFullYear(),
+    chatMessages: [
+      { role:'ai', text:"Hi Maya — I can update production status, schedule calendar events, add notes or tasks, and answer quick status questions. Try something like the suggestions below, or type your own." }
+    ],
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const s = seedState();
+  saveState(s);
+  return s;
+}
+function saveState(s){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){}
+}
+
+let state = loadState();
+if(!state.chatMessages){
+  state.chatMessages = [{ role:'ai', text:"Hi Maya — I can update production status, schedule calendar events, add notes or tasks, and answer quick status questions. Try something like the suggestions below, or type your own." }];
+  saveState(state);
+}
+if(!Array.isArray(state.notifications) || state.notifications.length === 0){
+  state.notifications = [
+    { id: uid('nf'), title:'New calendar event', text:'Supplier call scheduled for tomorrow at 10:00 AM.', time:'2 min ago', section:'calendar', read:false, kind:'calendar' },
+    { id: uid('nf'), title:'Order #32469 delivered', text:'Linen Shorts — Sand has been delivered successfully.', time:'15 min ago', section:'pre-orders', read:false, kind:'order' },
+    { id: uid('nf'), title:'Shipment tracking updated', text:'Your shipment is out for delivery and will arrive today.', time:'1 hr ago', section:'tracking', read:false, kind:'tracking' },
+    { id: uid('nf'), title:'New customer update', text:'A customer update is ready to review.', time:'2 hrs ago', section:'customer-updates', read:false, kind:'customer' },
+    { id: uid('nf'), title:'New important email', text:'Wholesale Buyer — Nora K. sent a new message.', time:'1 day ago', section:'important-emails', read:true, kind:'email' },
+  ];
+  saveState(state);
+}
+
+
+function logActivity(text, sub){
+  state.activity.unshift({ text, sub, date: todayISO() });
+  state.activity = state.activity.slice(0, 12);
+}
+
+/* ============================================================
+   Toasts
+   ============================================================ */
+function toast(msg){
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${msg}</span>`;
+  container.appendChild(el);
+  setTimeout(()=>{ el.classList.add('leaving'); setTimeout(()=>el.remove(), 220); }, 2600);
+}
+
+/* ============================================================
+   Notifications
+   ============================================================ */
+const notificationIcons = {
+  calendar:'<svg viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M4 9h16M5 4h14a1 1 0 0 1 1 1v14H4V5a1 1 0 0 1 1-1Z" stroke-width="1.6"/></svg>',
+  order:'<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8ZM8 8a4 4 0 0 1 8 0" stroke-width="1.6"/></svg>',
+  tracking:'<svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke-width="1.5"/></svg>',
+  customer:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5Z" stroke-width="1.6"/></svg>',
+  email:'<svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 6 9-6" stroke-width="1.6"/></svg>'
+};
+
+function renderNotifications(){
+  const list = document.getElementById('notificationList');
+  const count = document.getElementById('notificationCount');
+  if(!list || !count) return;
+  const unread = state.notifications.filter(n=>!n.read).length;
+  count.textContent = unread > 99 ? '99+' : unread;
+  count.classList.toggle('visible', unread > 0);
+  if(!state.notifications.length){
+    list.innerHTML = '<div class="notification-empty">You are all caught up.</div>';
+    return;
+  }
+  list.innerHTML = state.notifications.map(n=>`
+    <div class="notification-item ${n.read ? '' : 'unread'}" data-notification-id="${n.id}" data-section="${n.section}" role="button" tabindex="0">
+      <div class="notification-icon">${notificationIcons[n.kind] || notificationIcons.email}</div>
+      <div class="notification-content">
+        <div class="notification-title-row"><span class="notification-title">${escapeHtml(n.title)}</span><span class="notification-time">${escapeHtml(n.time)}</span></div>
+        <div class="notification-text">${escapeHtml(n.text)}</div>
+      </div>
+      ${n.read ? '' : '<span class="notification-unread-dot"></span>'}
+    </div>`).join('');
+}
+
+function markNotificationRead(id){
+  const n = state.notifications.find(x=>x.id===id);
+  if(!n) return;
+  n.read = true;
+  saveState(state);
+  renderNotifications();
+}
+
+function markAllNotificationsRead(){
+  state.notifications.forEach(n=>n.read=true);
+  saveState(state);
+  renderNotifications();
+  toast('All notifications marked as read');
+}
+
+const notificationBtn = document.getElementById('notificationBtn');
+const notificationPanel = document.getElementById('notificationPanel');
+notificationBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const open = notificationPanel.classList.toggle('open');
+  notificationBtn.setAttribute('aria-expanded', String(open));
+  if(open) renderNotifications();
+});
+document.getElementById('markAllNotificationsRead').addEventListener('click', (e)=>{ e.stopPropagation(); markAllNotificationsRead(); });
+document.getElementById('notificationList').addEventListener('click', (e)=>{
+  const item = e.target.closest('[data-notification-id]');
+  if(!item) return;
+  markNotificationRead(item.dataset.notificationId);
+  notificationPanel.classList.remove('open');
+  notificationBtn.setAttribute('aria-expanded','false');
+  goToSection(item.dataset.section);
+});
+document.getElementById('notificationList').addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  const item = e.target.closest('[data-notification-id]');
+  if(!item) return;
+  e.preventDefault(); item.click();
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.notification-wrap')){
+    notificationPanel.classList.remove('open');
+    notificationBtn.setAttribute('aria-expanded','false');
+  }
+});
+renderNotifications();
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+const SECTION_TITLES = {
+  'dashboard':'Dashboard','chat-ai':'Chat with AI','calendar':'Calendar','video-ideas':'Video Ideas','pre-orders':'Pre-Orders',
+  'customer-updates':'Customer Updates','sales':'Sales','notes':'Notes','important-emails':'Important Emails',
+  'bulk-orders':'Bulk Orders','cost-profit':'Cost & Profit','samples':'Samples','tracking':'Tracking','settings':'Settings'
+};
+
+function goToSection(section){
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.section === section);
+  });
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const view = document.getElementById('view-' + section);
+  if(view) view.classList.add('active');
+  document.getElementById('pageTitle').textContent = SECTION_TITLES[section] || section;
+  closeMobileNav();
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(section === 'chat-ai'){ renderChat(); setTimeout(()=>document.getElementById('chatInput').focus(), 150); }
+}
+
+document.querySelectorAll('.nav-item[data-section]').forEach(btn=>{
+  btn.addEventListener('click', ()=> goToSection(btn.dataset.section));
+});
+document.querySelectorAll('[data-goto]').forEach(btn=>{
+  btn.addEventListener('click', ()=> goToSection(btn.dataset.goto));
+});
+
+/* Mobile nav */
+const sidebar = document.getElementById('sidebar');
+const scrim = document.getElementById('sidebarScrim');
+document.getElementById('mobileNavToggle').addEventListener('click', ()=>{
+  sidebar.classList.toggle('open');
+  scrim.classList.toggle('active');
+});
+scrim.addEventListener('click', closeMobileNav);
+function closeMobileNav(){ sidebar.classList.remove('open'); scrim.classList.remove('active'); }
+
+/* ============================================================
+   Renderers
+   ============================================================ */
+function statusBadgeClass(status){
+  const map = {
+    'In Production':'badge-blue','Washing':'badge-purple','Sourced':'badge-neutral','Shipped':'badge-green',
+    'Delivered':'badge-green','Processing':'badge-orange','Pending':'badge-neutral','In Transit':'badge-blue',
+    'Out for Delivery':'badge-purple','Delayed':'badge-red','Requested':'badge-neutral','Received':'badge-green',
+    'Approved':'badge-green','Rejected':'badge-red','Idea':'badge-neutral','Planning':'badge-blue',
+    'In Progress':'badge-purple','Completed':'badge-green','Sent':'badge-green','Scheduled':'badge-blue','Draft':'badge-neutral',
+    'unread':'badge-blue','read':'badge-neutral','flagged':'badge-red',
+  };
+  return map[status] || 'badge-neutral';
+}
+
+function renderSummaryCards(){
+  const cards = [
+    { label:"Today's Sales", value:`$${state.salesToday.toLocaleString()}`, delta:'+12% vs yesterday', up:true },
+    { label:'Average Order Value', value:`$${state.aov}`, delta:'+3% vs last week', up:true },
+    { label:'Week-to-Date Sales', value:`$${state.weekToDate.toLocaleString()}`, delta:'+8% vs last week', up:true },
+    { label:'Active Pre-Orders', value: state.preOrders.filter(p=>p.status!=='Shipped').length, delta:`${state.preOrders.length} total`, up:true },
+  ];
+  document.getElementById('summaryCards').innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-delta ${c.up?'up':'down'}">${c.delta}</div>
+    </div>`).join('');
+}
+
+function eventTypeClass(type){
+  return type === 'production' ? 'type-production' : (type === 'deadline' ? 'type-deadline' : '');
+}
+
+function renderUpcoming(targetId, limit){
+  const upcoming = [...state.events].filter(e=> e.date >= todayISO()).sort((a,b)=> a.date.localeCompare(b.date)).slice(0, limit || 50);
+  const el = document.getElementById(targetId);
+  if(upcoming.length === 0){ el.innerHTML = `<div class="empty-state">No upcoming events yet. Add one from the calendar.</div>`; return; }
+  el.innerHTML = upcoming.map(e=>{
+    const d = new Date(e.date+'T00:00:00');
+    return `<li>
+      <div class="event-date-chip"><div class="d">${d.getDate()}</div><div class="m">${MONTH_NAMES[d.getMonth()].slice(0,3)}</div></div>
+      <div>
+        <div class="li-title">${escapeHtml(e.title)}</div>
+        <div class="li-sub">${e.time ? e.time+' · ' : ''}${capitalize(e.type)}</div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function renderActivity(){
+  const el = document.getElementById('activityList');
+  if(state.activity.length === 0){ el.innerHTML = `<div class="empty-state">No recent activity.</div>`; return; }
+  el.innerHTML = state.activity.map(a=>`
+    <li>
+      <div class="activity-dot"></div>
+      <div>
+        <div class="li-title">${escapeHtml(a.text)}</div>
+        <div class="li-sub">${escapeHtml(a.sub)} · ${fmtDate(a.date)}</div>
+      </div>
+    </li>`).join('');
+}
+
+function renderVideoIdeas(){
+  const el = document.getElementById('videoIdeasList');
+  if(state.videoIdeas.length === 0){ el.innerHTML = emptyState('No video ideas yet.'); return; }
+  el.innerHTML = state.videoIdeas.map(v=>`
+    <div class="item-card">
+      <div class="item-card-main">
+        <div class="item-card-title">${escapeHtml(v.title)}</div>
+        <div class="item-card-desc">${escapeHtml(v.description)}</div>
+        <div class="item-card-meta">
+          <span class="badge ${statusBadgeClass(v.status)}">${v.status}</span>
+          <span>Priority: ${v.priority}</span>
+          <span>Added ${fmtDate(v.created)}</span>
+        </div>
+      </div>
+      <div class="item-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openModal('videoidea','${v.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('videoIdeas','${v.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderPreOrders(){
+  const tbody = document.querySelector('#preOrdersTable tbody');
+  if(state.preOrders.length === 0){ tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No pre-orders yet.</td></tr>`; return; }
+  tbody.innerHTML = state.preOrders.map(p=>`
+    <tr>
+      <td><strong>${escapeHtml(p.product)}</strong></td>
+      <td>${p.orders}</td>
+      <td><span class="badge ${statusBadgeClass(p.status)}">${p.status}</span></td>
+      <td>${fmtDate(p.expected)}</td>
+      <td>${fmtDate(p.shipping)}</td>
+      <td><div class="progress-track"><div class="progress-fill" style="width:${p.progress}%"></div></div></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openModal('preorder','${p.id}')">Update</button></td>
+    </tr>`).join('');
+}
+
+function renderCustomerUpdates(){
+  const select = document.getElementById('cuProduct');
+  select.innerHTML = state.preOrders.map(p=>`<option value="${escapeHtml(p.product)}">${escapeHtml(p.product)}</option>`).join('');
+  const el = document.getElementById('customerUpdatesList');
+  if(state.customerUpdates.length === 0){ el.innerHTML = emptyState('No updates sent yet.'); return; }
+  el.innerHTML = [...state.customerUpdates].reverse().map(u=>`
+    <div class="item-card">
+      <div class="item-card-main">
+        <div class="item-card-title">${escapeHtml(u.subject)}</div>
+        <div class="item-card-desc">${escapeHtml(u.content)}</div>
+        <div class="item-card-meta">
+          <span class="badge ${statusBadgeClass(u.state)}">${u.state}</span>
+          <span>${escapeHtml(u.product)}</span>
+          <span>${fmtDate(u.date)}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderSales(){
+  const cards = [
+    { label:"Today's Sales", value:`$${state.salesToday.toLocaleString()}` },
+    { label:'Average Order Value', value:`$${state.aov}` },
+    { label:'Week-to-Date', value:`$${state.weekToDate.toLocaleString()}` },
+    { label:'Monthly Sales', value:`$${(state.weekToDate*4).toLocaleString()}` },
+  ];
+  document.getElementById('salesCards').innerHTML = cards.map(c=>`
+    <div class="stat-card"><div class="stat-label">${c.label}</div><div class="stat-value">${c.value}</div></div>`).join('');
+
+  const max = Math.max(...state.salesLast7);
+  const today = new Date();
+  document.getElementById('salesChart').innerHTML = state.salesLast7.map((v,i)=>{
+    const d = new Date(today); d.setDate(d.getDate() - (6-i));
+    return `<div class="bar-col">
+      <div class="bar-value">$${v}</div>
+      <div class="bar" style="height:${(v/max*100)}%"></div>
+      <div class="bar-label">${WEEKDAYS[d.getDay()]}</div>
+    </div>`;
+  }).join('');
+
+  const orders = [
+    {id:'#10234', customer:'Jenna R.', items:2, total:'$96.00', date: todayISO()},
+    {id:'#10233', customer:'Casey L.', items:1, total:'$42.00', date: addDays(todayISO(),0)},
+    {id:'#10232', customer:'Priya S.', items:3, total:'$128.50', date: addDays(todayISO(),-1)},
+    {id:'#10231', customer:'Marcus D.', items:1, total:'$38.00', date: addDays(todayISO(),-1)},
+    {id:'#10230', customer:'Ana G.', items:4, total:'$210.00', date: addDays(todayISO(),-2)},
+  ];
+  document.querySelector('#recentOrdersTable tbody').innerHTML = orders.map(o=>`
+    <tr><td>${o.id}</td><td>${o.customer}</td><td>${o.items}</td><td>${o.total}</td><td>${fmtDate(o.date)}</td></tr>`).join('');
+}
+
+function renderNotes(filter){
+  const el = document.getElementById('notesGrid');
+  let notes = [...state.notes].sort((a,b)=> (b.pinned - a.pinned) || b.date.localeCompare(a.date));
+  if(filter){ notes = notes.filter(n=> n.text.toLowerCase().includes(filter.toLowerCase())); }
+  if(notes.length === 0){ el.innerHTML = emptyState('No notes match.'); return; }
+  el.innerHTML = notes.map(n=>`
+    <div class="note-card ${n.pinned?'pinned':''}">
+      <div class="note-card-text">${escapeHtml(n.text)}</div>
+      <div class="note-card-footer">
+        <span class="note-card-date">${fmtDate(n.date)}</span>
+        <div class="note-card-actions">
+          <button class="note-icon-btn" title="${n.pinned?'Unpin':'Pin'}" onclick="toggleNotePin('${n.id}')">
+            <svg viewBox="0 0 24 24"><path d="M12 2v6M8 8h8l1.5 4.5H6.5L8 8Zm4 6v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="note-icon-btn" title="Edit" onclick="openModal('note','${n.id}')">
+            <svg viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5Z" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="note-icon-btn" title="Delete" onclick="deleteItem('notes','${n.id}')">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function toggleNotePin(id){
+  const n = state.notes.find(x=>x.id===id); if(!n) return;
+  n.pinned = !n.pinned; saveState(state); renderNotes(document.getElementById('notesSearch').value);
+  toast(n.pinned ? 'Note pinned' : 'Note unpinned');
+}
+
+function renderEmails(){
+  const search = (document.getElementById('emailsSearch').value || '').toLowerCase();
+  const filter = document.getElementById('emailsFilter').value;
+  let rows = [...state.emails].sort((a,b)=> b.date.localeCompare(a.date));
+  if(filter !== 'all'){ rows = rows.filter(e=> e.status === filter); }
+  if(search){ rows = rows.filter(e=> e.subject.toLowerCase().includes(search) || e.sender.toLowerCase().includes(search)); }
+  const tbody = document.querySelector('#emailsTable tbody');
+  if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No emails match.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(e=>`
+    <tr>
+      <td><strong>${escapeHtml(e.sender)}</strong></td>
+      <td>${escapeHtml(e.subject)}</td>
+      <td>${fmtDate(e.date)}</td>
+      <td><span class="badge ${statusBadgeClass(e.status)}">${capitalize(e.status)}</span></td>
+    </tr>`).join('');
+}
+
+function renderBulkOrders(){
+  const totalSpend = state.bulkOrders.reduce((s,b)=> s + Number(b.cost), 0);
+  const cards = [
+    { label:'Total Monthly Spending', value:`$${totalSpend.toLocaleString()}` },
+    { label:'Number of Bulk Orders', value: state.bulkOrders.length },
+    { label:'Most Recent', value: state.bulkOrders.length ? fmtDate([...state.bulkOrders].sort((a,b)=>b.date.localeCompare(a.date))[0].date) : '—' },
+  ];
+  document.getElementById('bulkOrderCards').innerHTML = cards.map(c=>`
+    <div class="stat-card"><div class="stat-label">${c.label}</div><div class="stat-value">${c.value}</div></div>`).join('');
+
+  const tbody = document.querySelector('#bulkOrdersTable tbody');
+  if(state.bulkOrders.length === 0){ tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No bulk orders yet.</td></tr>`; return; }
+  tbody.innerHTML = [...state.bulkOrders].sort((a,b)=>b.date.localeCompare(a.date)).map(b=>`
+    <tr>
+      <td>${escapeHtml(b.supplier)}</td>
+      <td>${escapeHtml(b.product)}</td>
+      <td>${b.quantity}</td>
+      <td>$${Number(b.cost).toLocaleString()}</td>
+      <td>${fmtDate(b.date)}</td>
+      <td><span class="badge ${statusBadgeClass(b.status)}">${b.status}</span></td>
+    </tr>`).join('');
+}
+
+function renderCostProfit(){
+  const cp = state.costProfit;
+  const potentialProfit = cp.estimatedRevenue - cp.monthlyCost;
+  const cards = [
+    { label:'Monthly Costs', value:`$${cp.monthlyCost.toLocaleString()}` },
+    { label:'Estimated Revenue', value:`$${cp.estimatedRevenue.toLocaleString()}` },
+    { label:'Potential Profit', value:`$${potentialProfit.toLocaleString()}` },
+  ];
+  document.getElementById('costProfitCards').innerHTML = cards.map(c=>`
+    <div class="stat-card"><div class="stat-label">${c.label}</div><div class="stat-value">${c.value}</div></div>`).join('');
+
+  document.getElementById('costBreakdown').innerHTML = cp.breakdown.map(b=>`
+    <div class="breakdown-row">
+      <div class="b-label">${b.label}</div>
+      <div class="b-track"><div class="b-fill" style="width:${(b.value/b.max*100)}%"></div></div>
+      <div class="b-value">$${b.value.toLocaleString()}</div>
+    </div>`).join('');
+
+  const max = Math.max(...cp.months.map(m=>m.profit));
+  document.getElementById('profitChart').innerHTML = cp.months.map(m=>`
+    <div class="bar-col">
+      <div class="bar-value">$${(m.profit/1000).toFixed(1)}k</div>
+      <div class="bar" style="height:${(m.profit/max*100)}%"></div>
+      <div class="bar-label">${m.m}</div>
+    </div>`).join('');
+}
+
+function renderSamples(){
+  const tbody = document.querySelector('#samplesTable tbody');
+  if(state.samples.length === 0){ tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No samples yet.</td></tr>`; return; }
+  tbody.innerHTML = state.samples.map(s=>`
+    <tr>
+      <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td>${escapeHtml(s.product)}</td>
+      <td>${escapeHtml(s.supplier)}</td>
+      <td><span class="badge ${statusBadgeClass(s.status)}">${s.status}</span></td>
+      <td>${fmtDate(s.submitted)}</td>
+      <td>${fmtDate(s.expected)}</td>
+    </tr>`).join('');
+}
+
+const TRACKING_STEPS = ['Pending','In Transit','Out for Delivery','Delivered'];
+function renderTracking(){
+  const el = document.getElementById('trackingList');
+  if(state.tracking.length === 0){ el.innerHTML = emptyState('No tracked shipments yet.'); return; }
+  el.innerHTML = state.tracking.map(t=>{
+    const isDelayed = t.status === 'Delayed';
+    const currentIdx = isDelayed ? 1 : TRACKING_STEPS.indexOf(t.status);
+    const timeline = TRACKING_STEPS.map((step, i)=>{
+      let cls = '';
+      if(i < currentIdx) cls = 'done';
+      else if(i === currentIdx) cls = 'current';
+      return `<div class="tt-step ${cls}"><div class="tt-line"></div><div class="tt-dot"></div><div class="tt-label">${step}</div></div>`;
+    }).join('');
+    return `<div class="item-card" style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start;">
+        <div class="item-card-main">
+          <div class="item-card-title">${escapeHtml(t.product)}</div>
+          <div class="item-card-desc">${t.carrier} · ${escapeHtml(t.number)}</div>
+          <div class="item-card-meta">
+            <span class="badge ${statusBadgeClass(t.status)}">${t.status}</span>
+            <span>Estimated arrival ${fmtDate(t.eta)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="tracking-timeline">${timeline}</div>
+    </div>`;
+  }).join('');
+}
+
+function emptyState(msg){ return `<div class="empty-state">${msg}</div>`; }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+
+/* ============================================================
+   Calendar
+   ============================================================ */
+function renderCalendar(){
+  const y = state.calendarViewYear, m = state.calendarViewMonth;
+  document.getElementById('calendarMonthLabel').textContent = `${MONTH_NAMES[m]} ${y}`;
+  document.getElementById('calendarWeekdays').innerHTML = WEEKDAYS.map(w=>`<div>${w}</div>`).join('');
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = todayISO();
+
+  let cells = '';
+  for(let i=0;i<firstDay;i++){ cells += `<div class="cal-cell empty"></div>`; }
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = isoDate(y,m,d);
+    const dayEvents = state.events.filter(e=> e.date === iso);
+    const chips = dayEvents.slice(0,3).map(e=> `<div class="cal-event-chip ${eventTypeClass(e.type)}" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</div>`).join('');
+    const more = dayEvents.length > 3 ? `<div class="cal-event-chip">+${dayEvents.length-3} more</div>` : '';
+    cells += `<div class="cal-cell ${iso===today?'today':''}" data-date="${iso}">
+        <div class="cal-date-num">${d}</div>
+        ${chips}${more}
+      </div>`;
+  }
+  document.getElementById('calendarDates').innerHTML = cells;
+
+  document.querySelectorAll('#calendarDates .cal-cell[data-date]').forEach(cell=>{
+    cell.addEventListener('click', ()=> openModal('event', null, { date: cell.dataset.date }));
+  });
+
+  renderUpcoming('calendarUpcomingList');
+}
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  state.calendarViewMonth--; if(state.calendarViewMonth<0){ state.calendarViewMonth=11; state.calendarViewYear--; }
+  renderCalendar();
+  renderNotifications();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  state.calendarViewMonth++; if(state.calendarViewMonth>11){ state.calendarViewMonth=0; state.calendarViewYear++; }
+  renderCalendar();
+});
+
+/* ============================================================
+   Delete
+   ============================================================ */
+function deleteItem(collection, id){
+  const before = state[collection].length;
+  state[collection] = state[collection].filter(x=>x.id !== id);
+  if(state[collection].length !== before){
+    saveState(state);
+    toast('Item deleted');
+    renderAll();
+  }
+}
+
+/* ============================================================
+   Modal system
+   ============================================================ */
+const MODAL_CONFIG = {
+  event: {
+    title:'Calendar event', collection:'events',
+    fields:[
+      {name:'title', label:'Event title', type:'text', required:true, wide:true},
+      {name:'date', label:'Date', type:'date', required:true},
+      {name:'time', label:'Time (optional)', type:'text', placeholder:'e.g. 10:00 AM'},
+      {name:'type', label:'Type', type:'select', options:['meeting','production','deadline']},
+      {name:'notes', label:'Notes', type:'textarea', wide:true},
+    ]
+  },
+  preorder: {
+    title:'Pre-order', collection:'preOrders',
+    fields:[
+      {name:'product', label:'Product name', type:'text', required:true, wide:true},
+      {name:'orders', label:'Number of orders', type:'number', required:true},
+      {name:'status', label:'Status', type:'select', options:['Sourced','In Production','Washing','Shipped']},
+      {name:'expected', label:'Expected arrival', type:'date'},
+      {name:'shipping', label:'Shipping date', type:'date'},
+      {name:'progress', label:'Progress (%)', type:'number'},
+    ]
+  },
+  videoidea: {
+    title:'Video idea', collection:'videoIdeas',
+    fields:[
+      {name:'title', label:'Title', type:'text', required:true, wide:true},
+      {name:'description', label:'Description', type:'textarea', wide:true},
+      {name:'status', label:'Status', type:'select', options:['Idea','Planning','In Progress','Completed']},
+      {name:'priority', label:'Priority', type:'select', options:['Low','Medium','High']},
+    ]
+  },
+  note: {
+    title:'Note', collection:'notes',
+    fields:[ {name:'text', label:'Note', type:'textarea', required:true, wide:true} ]
+  },
+  bulkorder: {
+    title:'Bulk order', collection:'bulkOrders',
+    fields:[
+      {name:'supplier', label:'Supplier', type:'text', required:true},
+      {name:'product', label:'Product', type:'text', required:true},
+      {name:'quantity', label:'Quantity', type:'number', required:true},
+      {name:'cost', label:'Cost ($)', type:'number', required:true},
+      {name:'date', label:'Date', type:'date'},
+      {name:'status', label:'Status', type:'select', options:['Processing','Delivered']},
+    ]
+  },
+  sample: {
+    title:'Sample', collection:'samples',
+    fields:[
+      {name:'name', label:'Sample name', type:'text', required:true, wide:true},
+      {name:'product', label:'Product', type:'text', required:true},
+      {name:'supplier', label:'Supplier', type:'text', required:true},
+      {name:'status', label:'Status', type:'select', options:['Requested','In Production','Shipped','Received','Approved','Rejected']},
+      {name:'submitted', label:'Date submitted', type:'date'},
+      {name:'expected', label:'Expected completion', type:'date'},
+    ]
+  },
+  tracking: {
+    title:'Tracking number', collection:'tracking',
+    fields:[
+      {name:'number', label:'Tracking number', type:'text', required:true, wide:true},
+      {name:'carrier', label:'Carrier', type:'select', options:['UPS','USPS','FedEx','DHL']},
+      {name:'product', label:'Related product / order', type:'text', required:true},
+      {name:'status', label:'Status', type:'select', options:['Pending','In Transit','Out for Delivery','Delivered','Delayed']},
+      {name:'eta', label:'Estimated arrival', type:'date'},
+    ]
+  }
+};
+
+let modalState = { type:null, editId:null };
+
+function openModal(type, editId, defaults){
+  const cfg = MODAL_CONFIG[type];
+  if(!cfg) return;
+  modalState = { type, editId: editId || null };
+
+  const existing = editId ? state[cfg.collection].find(x=>x.id===editId) : null;
+  document.getElementById('modalTitle').textContent = (existing ? 'Edit ' : 'Add ') + cfg.title.toLowerCase();
+  document.getElementById('modalSubmit').textContent = existing ? 'Save changes' : 'Save';
+
+  const form = document.getElementById('modalForm');
+  form.innerHTML = cfg.fields.map(f=>{
+    const val = existing ? existing[f.name] : (defaults && defaults[f.name] !== undefined ? defaults[f.name] : (f.type==='date' ? todayISO() : ''));
+    const wideClass = f.wide ? 'field-wide' : '';
+    if(f.type === 'select'){
+      return `<label class="field ${wideClass}"><span>${f.label}</span>
+        <select name="${f.name}" ${f.required?'required':''}>
+          ${f.options.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+        </select></label>`;
+    }
+    if(f.type === 'textarea'){
+      return `<label class="field ${wideClass}"><span>${f.label}</span>
+        <textarea name="${f.name}" rows="3" ${f.required?'required':''} placeholder="${f.placeholder||''}">${escapeHtml(val||'')}</textarea></label>`;
+    }
+    return `<label class="field ${wideClass}"><span>${f.label}</span>
+      <input type="${f.type}" name="${f.name}" value="${escapeHtml(val!==undefined && val!==null ? val : '')}" ${f.required?'required':''} placeholder="${f.placeholder||''}"></label>`;
+  }).join('');
+
+  document.getElementById('modalOverlay').classList.add('active');
+  const firstInput = form.querySelector('input, select, textarea');
+  if(firstInput) setTimeout(()=>firstInput.focus(), 50);
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('active');
+  modalState = { type:null, editId:null };
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id === 'modalOverlay') closeModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+
+document.getElementById('modalForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const cfg = MODAL_CONFIG[modalState.type];
+  if(!cfg) return;
+  const data = new FormData(e.target);
+  const obj = {};
+  cfg.fields.forEach(f=>{ obj[f.name] = data.get(f.name); });
+
+  if(modalState.editId){
+    const item = state[cfg.collection].find(x=>x.id===modalState.editId);
+    Object.assign(item, obj);
+    logActivity(`${cfg.title} updated`, obj.title || obj.product || obj.name || obj.text || '');
+    toast(`${cfg.title} updated`);
+  } else {
+    obj.id = uid(modalState.type.slice(0,3));
+    if(modalState.type === 'note'){ obj.pinned = false; obj.date = todayISO(); }
+    state[cfg.collection].push(obj);
+    logActivity(`${cfg.title} added`, obj.title || obj.product || obj.name || obj.text || '');
+    toast(`${cfg.title} added`);
+  }
+  saveState(state);
+  closeModal();
+  renderAll();
+});
+
+/* ============================================================
+   Customer updates actions
+   ============================================================ */
+document.getElementById('cuSendNow').addEventListener('click', ()=> submitCustomerUpdate('Sent'));
+document.getElementById('cuSchedule').addEventListener('click', ()=> submitCustomerUpdate('Scheduled'));
+document.getElementById('cuSendTest').addEventListener('click', ()=>{
+  toast('Test email sent to your inbox');
+});
+
+function submitCustomerUpdate(stateLabel){
+  const product = document.getElementById('cuProduct').value;
+  const subject = document.getElementById('cuSubject').value.trim();
+  const content = document.getElementById('cuContent').value.trim();
+  if(!subject || !content){ toast('Add a subject and message first'); return; }
+  state.customerUpdates.push({ id: uid('cu'), product, subject, content, state: stateLabel, date: todayISO() });
+  logActivity('Customer update created', subject);
+  saveState(state);
+  document.getElementById('customerUpdateForm').reset();
+  renderCustomerUpdates();
+  toast(stateLabel === 'Sent' ? 'Update sent to customers' : 'Update scheduled');
+}
+
+/* ============================================================
+   Search / filter wiring
+   ============================================================ */
+document.getElementById('notesSearch').addEventListener('input', (e)=> renderNotes(e.target.value));
+document.getElementById('emailsSearch').addEventListener('input', renderEmails);
+document.getElementById('emailsFilter').addEventListener('change', renderEmails);
+
+/* ============================================================
+   Quick action buttons
+   ============================================================ */
+document.querySelectorAll('[data-modal]').forEach(btn=>{
+  btn.addEventListener('click', ()=> openModal(btn.dataset.modal));
+});
+
+/* ============================================================
+   Chat with AI (simulated — frontend only, no real AI/backend)
+   ============================================================ */
+function renderChat(){
+  const win = document.getElementById('chatWindow');
+  win.innerHTML = state.chatMessages.map(m=>`
+    <div class="chat-msg ${m.role}">
+      <div class="chat-avatar">${m.role === 'ai' ? 'AI' : 'MA'}</div>
+      <div class="chat-bubble">${escapeHtml(m.text)}${m.actionTag ? `<div class="chat-action-tag">✓ ${escapeHtml(m.actionTag)}</div>` : ''}</div>
+    </div>`).join('');
+  win.scrollTop = win.scrollHeight;
+}
+
+function addChatMessage(role, text, actionTag){
+  state.chatMessages.push({ role, text, actionTag });
+  if(state.chatMessages.length > 60) state.chatMessages = state.chatMessages.slice(-60);
+  saveState(state);
+  renderChat();
+}
+
+const MONTH_LOOKUP = MONTH_NAMES.reduce((acc,name,i)=>{ acc[name.toLowerCase()] = i; acc[name.slice(0,3).toLowerCase()] = i; return acc; }, {});
+
+// Very simple natural-language date parser for demo purposes.
+function parseDateFromText(text){
+  const lower = text.toLowerCase();
+  if(/\btomorrow\b/.test(lower)) return addDays(todayISO(), 1);
+  if(/\btoday\b/.test(lower)) return todayISO();
+  if(/\bnext week\b/.test(lower)) return addDays(todayISO(), 7);
+
+  let m = lower.match(/\bin (\d+) days?\b/);
+  if(m) return addDays(todayISO(), parseInt(m[1], 10));
+
+  m = lower.match(/\b([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
+  if(m && MONTH_LOOKUP[m[1]] !== undefined){
+    const month = MONTH_LOOKUP[m[1]];
+    const day = parseInt(m[2], 10);
+    let year = new Date().getFullYear();
+    let candidate = isoDate(year, month, day);
+    if(candidate < todayISO()) candidate = isoDate(year + 1, month, day);
+    return candidate;
+  }
+
+  m = lower.match(/\b(\d{1,2})\/(\d{1,2})\b/);
+  if(m){
+    const month = parseInt(m[1],10) - 1, day = parseInt(m[2],10);
+    let year = new Date().getFullYear();
+    let candidate = isoDate(year, month, day);
+    if(candidate < todayISO()) candidate = isoDate(year+1, month, day);
+    return candidate;
+  }
+  return null;
+}
+
+function findMatchingProduct(text){
+  const lower = text.toLowerCase();
+  // exact/full match first
+  let match = state.preOrders.find(p => lower.includes(p.product.toLowerCase()));
+  if(match) return match;
+  // fall back to matching just the part before a dash, e.g. "Ribbed Tank" in "Ribbed Tank — Sage"
+  match = state.preOrders.find(p => {
+    const shortName = p.product.split(/[—-]/)[0].trim().toLowerCase();
+    return shortName.length > 2 && lower.includes(shortName);
+  });
+  return match || null;
+}
+
+const STAGE_KEYWORDS = [
+  { re:/\bsourc(ed|ing)\b/, stage:'Sourced' },
+  { re:/\b(in )?production\b|\bstarted producing\b|\b(fabric |it |material )?(has )?arrived\b|\breceived\b/, stage:'In Production' },
+  { re:/\bwash(ing|ed)?\b/, stage:'Washing' },
+  { re:/\bshipp(ed|ing)\b/, stage:'Shipped' },
+];
+
+// Simulated intent handling — mimics what a real agent would do against
+// the tool schemas (update_batch_stage, create_calendar_event, get_batch_status, etc.)
+function handleAiCommand(text){
+  const lower = text.toLowerCase();
+
+  // Intent: update production stage
+  const stageMatch = STAGE_KEYWORDS.find(k => k.re.test(lower));
+  const product = findMatchingProduct(text);
+  if(stageMatch && product){
+    product.status = stageMatch.stage;
+    logActivity('Pre-order updated', `${product.product} moved to ${stageMatch.stage}`);
+    saveState(state);
+    renderAll();
+    let reply = `Got it — I've marked "${product.product}" as ${stageMatch.stage}.`;
+    const date = parseDateFromText(text);
+    if(date){
+      const ev = { id: uid('ev'), title:`Next step — ${product.product}`, date, time:'', type:'production', notes:'Auto-created from AI chat' };
+      state.events.push(ev);
+      logActivity('Calendar event created', ev.title);
+      saveState(state); renderAll();
+      reply += ` I've also booked "${ev.title}" on ${fmtDateFull(date)}.`;
+      return { reply, actionTag:`Updated status + scheduled ${fmtDate(date)}` };
+    }
+    return { reply, actionTag:`Status updated to ${stageMatch.stage}` };
+  }
+
+  // Intent: status question
+  if(/\b(status|stage)\b/.test(lower) && (product || /\bof\b/.test(lower))){
+    if(product){
+      const nextEvent = state.events.filter(e=>e.date >= todayISO()).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      return { reply: `"${product.product}" is currently at: ${product.status}. Expected arrival ${fmtDateFull(product.expected)}, shipping ${fmtDateFull(product.shipping)}.` };
+    }
+    return { reply: `I couldn't match that to a product I know. Try one of: ${state.preOrders.map(p=>p.product).join(', ')}.` };
+  }
+
+  // Intent: what's on the calendar / upcoming
+  if(/\b(what'?s on|upcoming|this week|my calendar|schedule)\b/.test(lower) && !/\bschedule (a|an|the)\b/.test(lower)){
+    const upcoming = [...state.events].filter(e=>e.date >= todayISO()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
+    if(upcoming.length === 0) return { reply:"You don't have any upcoming events yet." };
+    const list = upcoming.map(e=> `• ${e.title} — ${fmtDateFull(e.date)}`).join('\n');
+    return { reply: `Here's what's coming up:\n${list}` };
+  }
+
+  // Intent: create calendar event / schedule meeting
+  if(/\b(schedule|book|create (an? )?event|set up a meeting|add (an? )?event)\b/.test(lower)){
+    const date = parseDateFromText(text) || addDays(todayISO(), 3);
+    let title = text.replace(/^(please\s+)?(schedule|book|create an event|create event|add an event|add event|set up a meeting)\b/i, '').trim();
+    title = title.replace(/\bfor\b\s*$/i,'').trim();
+    if(!title) title = product ? `Meeting — ${product.product}` : 'New event';
+    if(title.length > 60) title = title.slice(0,60) + '…';
+    const ev = { id: uid('ev'), title: capitalize(title), date, time:'', type:'meeting', notes:'Auto-created from AI chat' };
+    state.events.push(ev);
+    logActivity('Calendar event created', ev.title);
+    saveState(state); renderAll();
+    return { reply: `Done — I've scheduled "${ev.title}" for ${fmtDateFull(date)}. You can adjust it any time from the Calendar tab.`, actionTag:`Event created — ${fmtDate(date)}` };
+  }
+
+  // Intent: add a note / reminder
+  if(/\b(remind me to|add a note|add note|note:|remember)\b/.test(lower)){
+    let noteText = text.replace(/^(please\s+)?(remind me to|add a note[:\s]*|add note[:\s]*|note:|remember (to|that)?)\s*/i, '').trim();
+    if(!noteText) noteText = text;
+    const note = { id: uid('nt'), text: capitalize(noteText), pinned:false, date: todayISO() };
+    state.notes.push(note);
+    logActivity('Note added', note.text);
+    saveState(state); renderAll();
+    return { reply: `Saved as a note: "${note.text}"`, actionTag:'Note added' };
+  }
+
+  // Fallback
+  return { reply: `I can help with production updates, scheduling events, notes, and quick status checks. Try things like "Fabric arrived for [product]", "Schedule a meeting for Sept 5", or "What stage is [product] in?"` };
+}
+
+function sendChatMessage(text){
+  text = text.trim();
+  if(!text) return;
+  addChatMessage('user', text);
+
+  const win = document.getElementById('chatWindow');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'chat-msg ai';
+  typingEl.innerHTML = `<div class="chat-avatar">AI</div><div class="chat-bubble chat-typing"><span></span><span></span><span></span></div>`;
+  win.appendChild(typingEl);
+  win.scrollTop = win.scrollHeight;
+
+  setTimeout(()=>{
+    typingEl.remove();
+    const { reply, actionTag } = handleAiCommand(text);
+    addChatMessage('ai', reply, actionTag);
+    if(actionTag) toast(actionTag);
+  }, 500 + Math.random()*400);
+}
+
+document.getElementById('chatForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  sendChatMessage(input.value);
+  input.value = '';
+});
+document.querySelectorAll('#chatSuggestions .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=> sendChatMessage(chip.dataset.cmd));
+});
+
+/* ============================================================
+   Render all
+   ============================================================ */
+function renderAll(){
+  renderSummaryCards();
+  renderUpcoming('upcomingList', 5);
+  renderActivity();
+  renderVideoIdeas();
+  renderPreOrders();
+  renderCustomerUpdates();
+  renderSales();
+  renderNotes(document.getElementById('notesSearch').value);
+  renderEmails();
+  renderBulkOrders();
+  renderCostProfit();
+  renderSamples();
+  renderTracking();
+  renderCalendar();
+}
+
+renderAll();
+
+</script>
+</body>
+</html>

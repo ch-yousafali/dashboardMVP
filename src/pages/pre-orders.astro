@@ -1,0 +1,53 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const preOrders = await db.select().from(schema.preOrders).where(eq(schema.preOrders.workspaceId, wsId));
+---
+
+<DashboardLayout title="Pre-Orders — Business HQ" activeSection="pre-orders" pageTitle="Pre-Orders">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Pre-orders</h2>
+        <button class="btn btn-primary" data-modal="preorder">+ Add Pre-Order</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Product</th><th>Orders</th><th>Status</th><th>Expected arrival</th><th>Shipping date</th><th>Progress</th><th></th></tr>
+          </thead>
+          <tbody>
+            {preOrders.length === 0 ? (
+              <tr><td colspan="7" class="empty-state">No pre-orders yet.</td></tr>
+            ) : preOrders.map(p => (
+              <tr>
+                <td><strong>{p.product}</strong></td>
+                <td>{p.orders}</td>
+                <td><span class={`badge ${statusBadgeClass(p.status)}`}>{p.status}</span></td>
+                <td>{fmtDate(p.expected || '')}</td>
+                <td>{fmtDate(p.shipping || '')}</td>
+                <td><div class="progress-track"><div class="progress-fill" style={`width:${p.progress}%`}></div></div></td>
+                <td><button class="btn btn-secondary btn-sm" onclick={`window.hqOpenModal('preorder','${p.id}')`}>Update</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script>
+  window.hqDeleteItem = async (endpoint, id) => {
+    if (!confirm('Delete this item?')) return;
+    const res = await fetch(`/api/${endpoint}/${id}`, { method: 'DELETE' });
+    if (res.ok) { if (window.hqToast) window.hqToast('Item deleted'); window.location.reload(); }
+  };
+</script>

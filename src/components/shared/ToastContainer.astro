@@ -1,0 +1,30 @@
+---
+// Toast container — rendered once, controlled by client-side JS
+---
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  function toast(msg: string) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>`;
+    const span = el.querySelector('span');
+    if (span) span.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('leaving');
+      setTimeout(() => el.remove(), 220);
+    }, 2600);
+  }
+
+  (window as any).hqToast = toast;
+
+  // Listen for server-side flash messages
+  window.addEventListener('hq:toast', (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail?.message) toast(detail.message);
+  });
+</script>

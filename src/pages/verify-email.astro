@@ -1,0 +1,23 @@
+---
+import AuthLayout from '@/layouts/AuthLayout.astro';
+
+const token = Astro.url.searchParams.get('token') || '';
+---
+
+<AuthLayout title="Verify Email — Business HQ">
+  <h1 class="auth-title">Verify your email</h1>
+  <p class="auth-subtitle">Confirming your email address…</p>
+
+  {token ? (
+    <form class="auth-form" id="verifyForm" method="POST" action="/api/auth/verify-email">
+      <input type="hidden" name="token" value={token} />
+      <button type="submit" class="btn btn-primary auth-btn">Verify email</button>
+    </form>
+  ) : (
+    <div class="auth-error">Invalid verification link.</div>
+  )}
+
+  <div class="auth-footer">
+    <a href="/login">Back to sign in</a>
+  </div>
+</AuthLayout>

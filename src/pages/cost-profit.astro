@@ -1,0 +1,65 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const cpRows = await db.select().from(schema.costProfit).where(eq(schema.costProfit.workspaceId, wsId)).limit(1);
+const cp = cpRows[0];
+
+const monthlyCost = cp?.monthlyCost || 0;
+const estimatedRevenue = cp?.estimatedRevenue || 0;
+const potentialProfit = estimatedRevenue - monthlyCost;
+const breakdown = (cp?.breakdown as { label: string; value: number; max: number }[]) || [];
+const monthlyProfit = (cp?.monthlyProfit as { m: string; profit: number }[]) || [];
+const maxProfit = Math.max(...monthlyProfit.map(m => m.profit), 1);
+
+const cards = [
+  { label: 'Monthly Costs', value: `$${monthlyCost.toLocaleString()}` },
+  { label: 'Estimated Revenue', value: `$${estimatedRevenue.toLocaleString()}` },
+  { label: 'Potential Profit', value: `$${potentialProfit.toLocaleString()}` },
+];
+---
+
+<DashboardLayout title="Cost & Profit — Business HQ" activeSection="cost-profit" pageTitle="Cost & Profit">
+  <section class="view active">
+    <div class="cards-grid">
+      {cards.map(c => (
+        <div class="stat-card">
+          <div class="stat-label">{c.label}</div>
+          <div class="stat-value">{c.value}</div>
+        </div>
+      ))}
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head"><h2>Cost breakdown</h2></div>
+        <div class="breakdown-list">
+          {breakdown.map(b => (
+            <div class="breakdown-row">
+              <div class="b-label">{b.label}</div>
+              <div class="b-track"><div class="b-fill" style={`width:${(b.value / b.max) * 100}%`}></div></div>
+              <div class="b-value">${b.value.toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Profit — last 6 months</h2></div>
+        <div class="bar-chart">
+          {monthlyProfit.map(m => (
+            <div class="bar-col">
+              <div class="bar-value">${(m.profit / 1000).toFixed(1)}k</div>
+              <div class="bar" style={`height:${(m.profit / maxProfit) * 100}%`}></div>
+              <div class="bar-label">{m.m}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

@@ -1,0 +1,59 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { fmtDate, statusBadgeClass } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const bulkOrders = await db.select().from(schema.bulkOrders).where(eq(schema.bulkOrders.workspaceId, wsId));
+const sorted = [...bulkOrders].sort((a, b) => b.date.localeCompare(a.date));
+const totalSpend = bulkOrders.reduce((s, b) => s + b.cost, 0);
+const mostRecent = sorted[0]?.date || '—';
+
+const cards = [
+  { label: 'Total Monthly Spending', value: `$${totalSpend.toLocaleString()}` },
+  { label: 'Number of Bulk Orders', value: bulkOrders.length },
+  { label: 'Most Recent', value: mostRecent !== '—' ? fmtDate(mostRecent) : '—' },
+];
+---
+
+<DashboardLayout title="Bulk Orders — Business HQ" activeSection="bulk-orders" pageTitle="Bulk Orders">
+  <section class="view active">
+    <div class="cards-grid">
+      {cards.map(c => (
+        <div class="stat-card">
+          <div class="stat-label">{c.label}</div>
+          <div class="stat-value">{c.value}</div>
+        </div>
+      ))}
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Bulk orders</h2>
+        <button class="btn btn-primary" data-modal="bulkorder">+ Add Bulk Order</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Supplier</th><th>Product</th><th>Quantity</th><th>Cost</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr><td colspan="6" class="empty-state">No bulk orders yet.</td></tr>
+            ) : sorted.map(b => (
+              <tr>
+                <td>{b.supplier}</td>
+                <td>{b.product}</td>
+                <td>{b.quantity}</td>
+                <td>${b.cost.toLocaleString()}</td>
+                <td>{fmtDate(b.date)}</td>
+                <td><span class={`badge ${statusBadgeClass(b.status)}`}>{b.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

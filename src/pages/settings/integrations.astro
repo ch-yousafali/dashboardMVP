@@ -1,0 +1,120 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { isProviderConfigured } from '@/lib/llm';
+import { isComposioConfigured } from '@/lib/composio';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const integrations = await db.select().from(schema.integrations).where(eq(schema.integrations.workspaceId, wsId));
+
+const llmProviders = [
+  { provider: 'openai', name: 'OpenAI', keyEnv: 'OPENAI_API_KEY', desc: 'GPT-4o, GPT-4o-mini, and other OpenAI models' },
+  { provider: 'anthropic', name: 'Anthropic', keyEnv: 'ANTHROPIC_API_KEY', desc: 'Claude 3.5 Sonnet and other Anthropic models' },
+  { provider: 'openrouter', name: 'OpenRouter', keyEnv: 'OPENROUTER_API_KEY', desc: 'Access multiple LLM providers through one API' },
+];
+
+const googleProviders = [
+  { provider: 'google_calendar', name: 'Google Calendar', desc: 'Sync calendar events automatically' },
+  { provider: 'google_drive', name: 'Google Drive', desc: 'Access and manage files' },
+  { provider: 'google_business', name: 'Google Business Profile', desc: 'Manage your business listing' },
+];
+---
+
+<DashboardLayout title="Integrations — Business HQ" activeSection="settings" pageTitle="Integrations">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head"><h2>LLM Providers</h2></div>
+      <p style="font-size:12.5px; color:var(--text-tertiary); margin-bottom:16px;">Configure API keys in your <code>.env</code> file to enable AI-powered chat. Keys are stored server-side only.</p>
+      {llmProviders.map(p => {
+        const configured = isProviderConfigured(p.provider as any);
+        const record = integrations.find(i => i.provider === p.provider);
+        const status = record?.status || (configured ? 'not_connected' : 'not_connected');
+        return (
+          <div class="integration-row">
+            <div>
+              <strong>{p.name}</strong>
+              <p>{p.desc}</p>
+              <p style="font-size:11px; margin-top:4px;">Status: {configured ? '✓ API key set in .env' : '✗ No API key found'}</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span class={`badge ${configured ? 'badge-green' : 'badge-neutral'}`}>{configured ? 'Ready' : 'Not configured'}</span>
+              {configured && status !== 'connected' && (
+                <button class="btn btn-primary btn-sm" onclick={`window.connectLLM('${p.provider}')`}>Enable</button>
+              )}
+              {configured && status === 'connected' && (
+                <button class="btn btn-secondary btn-sm" onclick={`window.disconnectIntegration('${p.provider}')`}>Disable</button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Google Integrations</h2></div>
+      <p style="font-size:12.5px; color:var(--text-tertiary); margin-bottom:16px;">Connect via Composio for secure OAuth. {isComposioConfigured() ? '✓ Composio configured' : '✗ Set COMPOSIO_API_KEY in .env'}</p>
+      {googleProviders.map(p => {
+        const record = integrations.find(i => i.provider === p.provider);
+        const status = record?.status || 'not_connected';
+        const statusLabel = status.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const badgeClass = status === 'connected' ? 'badge-green' : status === 'connecting' ? 'badge-orange' : 'badge-neutral';
+        return (
+          <div class="integration-row">
+            <div>
+              <strong>{p.name}</strong>
+              <p>{p.desc}</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span class={`badge ${badgeClass}`}>{statusLabel}</span>
+              {isComposioConfigured() && status === 'not_connected' && (
+                <button class="btn btn-primary btn-sm" onclick={`window.connectIntegration('${p.provider}')`}>Connect</button>
+              )}
+              {status === 'connected' && (
+                <button class="btn btn-secondary btn-sm" onclick={`window.disconnectIntegration('${p.provider}')`}>Disconnect</button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+</DashboardLayout>
+
+<script is:inline define:vars={{ wsId: Astro.locals.workspace!.id }}>
+  window.connectLLM = async (provider) => {
+    const res = await fetch('/api/integrations/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider }),
+    });
+    if (res.ok) { if (window.hqToast) window.hqToast(`${provider} enabled`); window.location.reload(); }
+    else { const data = await res.json(); if (window.hqToast) window.hqToast(data.error || 'Failed'); }
+  };
+
+  window.connectIntegration = async (provider) => {
+    if (window.hqToast) window.hqToast('Connecting…');
+    try {
+      const res = await fetch('/api/integrations/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await res.json();
+      if (data.redirectUrl) window.location.href = data.redirectUrl;
+      else if (window.hqToast) window.hqToast(data.error || 'Failed');
+    } catch (e) { if (window.hqToast) window.hqToast('Connection failed'); }
+  };
+
+  window.disconnectIntegration = async (provider) => {
+    const res = await fetch('/api/integrations/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider }),
+    });
+    if (res.ok) { if (window.hqToast) window.hqToast('Disconnected'); window.location.reload(); }
+  };
+</script>

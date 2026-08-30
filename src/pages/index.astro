@@ -1,0 +1,112 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { todayISO, fmtDate, fmtDateFull, capitalize, MONTH_NAMES } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const workspace = Astro.locals.workspace;
+const wsId = workspace.id;
+
+// Fetch data
+const events = await db.select().from(schema.calendarEvents).where(eq(schema.calendarEvents.workspaceId, wsId));
+const preOrders = await db.select().from(schema.preOrders).where(eq(schema.preOrders.workspaceId, wsId));
+const activity = await db.select().from(schema.activity).where(eq(schema.activity.workspaceId, wsId)).orderBy(schema.activity.createdAt).limit(12);
+const salesDaily = await db.select().from(schema.salesDaily).where(eq(schema.salesDaily.workspaceId, wsId)).orderBy(schema.salesDaily.date).limit(7);
+
+const today = todayISO();
+const upcoming = events.filter(e => e.date >= today).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 5);
+const activePreOrders = preOrders.filter(p => p.status !== 'Shipped').length;
+const todaySales = salesDaily.filter(s => s.date === today).reduce((sum, s) => sum + s.total, 0) || salesDaily[salesDaily.length - 1]?.total || 0;
+const weekToDate = salesDaily.reduce((sum, s) => sum + s.total, 0);
+const aov = 58;
+
+const summaryCards = [
+  { label: "Today's Sales", value: `$${todaySales.toLocaleString()}`, delta: '+12% vs yesterday', up: true },
+  { label: 'Average Order Value', value: `$${aov}`, delta: '+3% vs last week', up: true },
+  { label: 'Week-to-Date Sales', value: `$${weekToDate.toLocaleString()}`, delta: '+8% vs last week', up: true },
+  { label: 'Active Pre-Orders', value: activePreOrders, delta: `${preOrders.length} total`, up: true },
+];
+
+const quickActions = [
+  { modal: 'event', label: 'Add Calendar Event' },
+  { modal: 'preorder', label: 'Add Pre-Order Update' },
+  { modal: 'note', label: 'Add Note' },
+  { modal: 'bulkorder', label: 'Add Bulk Order' },
+  { modal: 'sample', label: 'Add Sample' },
+  { modal: 'tracking', label: 'Add Tracking Number' },
+];
+---
+
+<DashboardLayout title="Dashboard — Business HQ" activeSection="dashboard" pageTitle="Dashboard">
+  <section class="view active" id="view-dashboard">
+    <div class="cards-grid">
+      {summaryCards.map(c => (
+        <div class="stat-card">
+          <div class="stat-label">{c.label}</div>
+          <div class="stat-value">{c.value}</div>
+          <div class={`stat-delta ${c.up ? 'up' : 'down'}`}>{c.delta}</div>
+        </div>
+      ))}
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Upcoming</h2>
+          <a href="/calendar" class="link-btn">View calendar</a>
+        </div>
+        <ul class="upcoming-list">
+          {upcoming.length === 0 ? (
+            <div class="empty-state">No upcoming events yet. Add one from the calendar.</div>
+          ) : upcoming.map(e => {
+            const d = new Date(e.date + 'T00:00:00');
+            return (
+              <li>
+                <div class="event-date-chip">
+                  <div class="d">{d.getDate()}</div>
+                  <div class="m">{MONTH_NAMES[d.getMonth()].slice(0,3)}</div>
+                </div>
+                <div>
+                  <div class="li-title">{e.title}</div>
+                  <div class="li-sub">{e.time ? e.time + ' · ' : ''}{capitalize(e.type)}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Recent activity</h2></div>
+        <ul class="activity-list">
+          {activity.length === 0 ? (
+            <div class="empty-state">No recent activity.</div>
+          ) : activity.reverse().map(a => (
+            <li>
+              <div class="activity-dot"></div>
+              <div>
+                <div class="li-title">{a.text}</div>
+                <div class="li-sub">{a.sub} · {fmtDate(a.date)}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Quick actions</h2></div>
+      <div class="quick-actions">
+        {quickActions.map(qa => (
+          <button class="quick-action" data-modal={qa.modal}>
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.8" fill="none" /></svg>
+            {qa.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+</DashboardLayout>

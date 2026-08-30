@@ -1,0 +1,120 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { todayISO, fmtDate, capitalize, MONTH_NAMES, WEEKDAYS, eventTypeClass, escapeHtml } from '@/lib/utils';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const events = await db.select().from(schema.calendarEvents).where(eq(schema.calendarEvents.workspaceId, wsId));
+
+const today = todayISO();
+const upcoming = events.filter(e => e.date >= today).sort((a,b) => a.date.localeCompare(b.date));
+
+// Calendar grid data — pass to client
+const viewMonth = new Date().getMonth();
+const viewYear = new Date().getFullYear();
+const eventsByDate = events.reduce((acc, e) => {
+  if (!acc[e.date]) acc[e.date] = [];
+  acc[e.date].push({ id: e.id, title: e.title, type: e.type });
+  return acc;
+}, {} as Record<string, { id: string; title: string; type: string }[]>);
+---
+
+<DashboardLayout title="Calendar — Business HQ" activeSection="calendar" pageTitle="Calendar">
+  <section class="view active" id="view-calendar">
+    <div class="panel">
+      <div class="calendar-header">
+        <div class="calendar-nav">
+          <button class="icon-btn" id="prevMonth">‹</button>
+          <h2 id="calendarMonthLabel">{MONTH_NAMES[viewMonth]} {viewYear}</h2>
+          <button class="icon-btn" id="nextMonth">›</button>
+        </div>
+        <button class="btn btn-primary" data-modal="event">+ Add Event</button>
+      </div>
+      <div class="calendar-grid calendar-weekdays" id="calendarWeekdays">
+        {WEEKDAYS.map(w => <div>{w}</div>)}
+      </div>
+      <div class="calendar-grid calendar-dates" id="calendarDates"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Upcoming events</h2></div>
+      <ul class="upcoming-list">
+        {upcoming.length === 0 ? (
+          <div class="empty-state">No upcoming events yet.</div>
+        ) : upcoming.map(e => {
+          const d = new Date(e.date + 'T00:00:00');
+          return (
+            <li>
+              <div class="event-date-chip">
+                <div class="d">{d.getDate()}</div>
+                <div class="m">{MONTH_NAMES[d.getMonth()].slice(0,3)}</div>
+              </div>
+              <div>
+                <div class="li-title">{e.title}</div>
+                <div class="li-sub">{e.time ? e.time + ' · ' : ''}{capitalize(e.type)}</div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script is:inline define:vars={{ eventsByDate, today, viewMonth, viewYear }}>
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let calMonth = viewMonth;
+  let calYear = viewYear;
+
+  function isoDate(y, m, d) {
+    return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function eventTypeClass(type) {
+    return type === 'production' ? 'type-production' : type === 'deadline' ? 'type-deadline' : '';
+  }
+
+  function renderCalendar() {
+    document.getElementById('calendarMonthLabel').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    let cells = '';
+    for (let i = 0; i < firstDay; i++) cells += '<div class="cal-cell empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = isoDate(calYear, calMonth, d);
+      const dayEvents = eventsByDate[iso] || [];
+      const chips = dayEvents.slice(0, 3).map(e =>
+        `<div class="cal-event-chip ${eventTypeClass(e.type)}" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</div>`
+      ).join('');
+      const more = dayEvents.length > 3 ? `<div class="cal-event-chip">+${dayEvents.length-3} more</div>` : '';
+      cells += `<div class="cal-cell ${iso === today ? 'today' : ''}" data-date="${iso}">
+        <div class="cal-date-num">${d}</div>${chips}${more}
+      </div>`;
+    }
+    document.getElementById('calendarDates').innerHTML = cells;
+
+    document.querySelectorAll('#calendarDates .cal-cell[data-date]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        if (window.hqOpenModal) window.hqOpenModal('event', null, { date: cell.dataset.date });
+      });
+    });
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  renderCalendar();
+</script>

@@ -1,0 +1,171 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { db, schema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { isProviderConfigured } from '@/lib/llm';
+import { isComposioConfigured } from '@/lib/composio';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+if (!Astro.locals.workspace) return Astro.redirect('/onboarding');
+
+const wsId = Astro.locals.workspace!.id;
+const profile = Astro.locals.profile;
+const integrations = await db.select().from(schema.integrations).where(eq(schema.integrations.workspaceId, wsId));
+
+const integrationList = [
+  { provider: 'google_calendar', name: 'Google Calendar', desc: 'Sync your calendar events automatically.', type: 'google' },
+  { provider: 'google_drive', name: 'Google Drive', desc: 'Access and manage your files.', type: 'google' },
+  { provider: 'google_business', name: 'Google Business Profile', desc: 'Manage your business listing.', type: 'google' },
+  { provider: 'openai', name: 'OpenAI', desc: 'Power your AI assistant with GPT models.', type: 'llm' },
+  { provider: 'anthropic', name: 'Anthropic', desc: 'Use Claude models for your AI assistant.', type: 'llm' },
+  { provider: 'openrouter', name: 'OpenRouter', desc: 'Access multiple LLM providers through one API.', type: 'llm' },
+];
+
+function getIntegrationStatus(provider: string): string {
+  const record = integrations.find(i => i.provider === provider);
+  return record?.status || 'not_connected';
+}
+
+function statusBadgeClass(status: string): string {
+  const map: Record<string, string> = {
+    not_connected: 'badge-neutral',
+    connecting: 'badge-orange',
+    connected: 'badge-green',
+    reconnect: 'badge-orange',
+    disconnect: 'badge-red',
+    configuration_required: 'badge-red',
+  };
+  return map[status] || 'badge-neutral';
+}
+
+function formatStatus(status: string): string {
+  return status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+---
+
+<DashboardLayout title="Settings — Business HQ" activeSection="settings" pageTitle="Settings">
+  <section class="view active">
+    <div class="panel">
+      <div class="panel-head"><h2>Business profile</h2></div>
+      <form class="form-grid" id="profileForm">
+        <label class="field">
+          <span>Business name</span>
+          <input type="text" name="businessName" value={Astro.locals.workspace?.name || ''} />
+        </label>
+        <label class="field">
+          <span>Owner name</span>
+          <input type="text" name="ownerName" value={profile?.fullName || ''} />
+        </label>
+        <label class="field">
+          <span>Contact email</span>
+          <input type="email" name="email" value={Astro.locals.user?.email || ''} />
+        </label>
+        <label class="field">
+          <span>Time zone</span>
+          <div class="hq-select">
+            <select class="hq-select-native" name="timezone">
+              <option>Eastern Time (US)</option>
+              <option>Central Time (US)</option>
+              <option>Mountain Time (US)</option>
+              <option>Pacific Time (US)</option>
+            </select>
+          </div>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save profile</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Notifications</h2></div>
+      <div class="toggle-row"><span>Email me when a bulk order arrives</span><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Text me tracking updates</span><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Weekly sales summary</span><label class="switch"><input type="checkbox" /><span class="slider"></span></label></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Connected integrations</h2></div>
+      {integrationList.map(int => {
+        const status = getIntegrationStatus(int.provider);
+        const configured = int.type === 'llm' ? isProviderConfigured(int.provider as any) : isComposioConfigured();
+        return (
+          <div class="integration-row">
+            <div>
+              <strong>{int.name}</strong>
+              <p>{int.desc}{!configured && int.type === 'llm' ? ' — API key not set in .env' : ''}{!configured && int.type === 'google' ? ' — Composio not configured' : ''}</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span class={`badge ${statusBadgeClass(status)}`}>{formatStatus(status)}</span>
+              {int.type === 'google' && configured && status === 'not_connected' && (
+                <button class="btn btn-primary btn-sm" onclick={`window.connectIntegration('${int.provider}')`}>Connect</button>
+              )}
+              {int.type === 'google' && status === 'connected' && (
+                <button class="btn btn-secondary btn-sm" onclick={`window.disconnectIntegration('${int.provider}')`}>Disconnect</button>
+              )}
+              {int.type === 'llm' && (
+                <a href="/settings/integrations" class="btn btn-secondary btn-sm">Configure</a>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Account</h2></div>
+      <div class="toggle-row">
+        <span>Sign out of your account</span>
+        <form method="POST" action="/api/auth/logout" style="margin:0;">
+          <button type="submit" class="btn btn-danger btn-sm">Sign out</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</DashboardLayout>
+
+<script is:inline define:vars={{ wsId: Astro.locals.workspace!.id }}>
+  // Profile form
+  document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const res = await fetch('/api/settings/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName: fd.get('businessName'),
+        ownerName: fd.get('ownerName'),
+      }),
+    });
+    if (res.ok) { if (window.hqToast) window.hqToast('Profile saved'); window.location.reload(); }
+  });
+
+  window.connectIntegration = async (provider) => {
+    if (window.hqToast) window.hqToast('Connecting…');
+    try {
+      const res = await fetch('/api/integrations/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await res.json();
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else if (window.hqToast) {
+        window.hqToast(data.error || 'Failed to connect');
+      }
+    } catch (e) {
+      if (window.hqToast) window.hqToast('Connection failed');
+    }
+  };
+
+  window.disconnectIntegration = async (provider) => {
+    if (!confirm('Disconnect this integration?')) return;
+    const res = await fetch('/api/integrations/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider }),
+    });
+    if (res.ok) { if (window.hqToast) window.hqToast('Disconnected'); window.location.reload(); }
+  };
+</script>

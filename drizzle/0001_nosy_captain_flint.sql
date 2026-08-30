@@ -1,0 +1,1 @@
+ALTER TABLE "notes" ADD COLUMN "color" text DEFAULT 'default' NOT NULL;
